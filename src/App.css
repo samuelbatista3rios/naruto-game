@@ -253,6 +253,22 @@ body {
 .fighter-card.ally-f    { border-color: #33aaff; box-shadow: 0 0 12px rgba(50,150,255,0.45); animation: apulse 0.6s ease-in-out infinite alternate; }
 .fighter-card.dead      { opacity: 0.22; filter: grayscale(1); cursor: default; }
 .fighter-card.idle      { cursor: default; }
+.fighter-card.acted     { opacity: 0.65; border-color: #2a3a2a; cursor: pointer; }
+.fighter-card.acted:hover { border-color: #3a5a3a; }
+
+/* Badge "Já Agiu" e "Atordoado" nos cards */
+.fighter-acted-badge {
+  position: absolute; top: 3px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,60,0,0.85); color: #44cc44; font-size: 0.52rem;
+  font-weight: 800; padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+  z-index: 2; letter-spacing: 0.03em;
+}
+.fighter-stun-badge {
+  position: absolute; top: 3px; left: 50%; transform: translateX(-50%);
+  background: rgba(40,20,80,0.9); color: #aa88ff; font-size: 0.52rem;
+  font-weight: 800; padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+  z-index: 2;
+}
 
 @keyframes tpulse { from{ box-shadow:0 0 8px rgba(255,50,50,0.35); }  to{ box-shadow:0 0 18px rgba(255,50,50,0.8); } }
 @keyframes apulse { from{ box-shadow:0 0 8px rgba(50,150,255,0.35); } to{ box-shadow:0 0 18px rgba(50,150,255,0.7); } }

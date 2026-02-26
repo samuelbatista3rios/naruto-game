@@ -4,11 +4,11 @@
 // ============================================================
 
 export const RANK_INFO = [
-  { rank: 'Genin',  minPoints: 0,   color: '#22AA44', desc: 'Iniciante da aldeia' },
-  { rank: 'Chunin', minPoints: 100, color: '#0088FF', desc: 'Ninja intermediário' },
-  { rank: 'Jonin',  minPoints: 300, color: '#AA44FF', desc: 'Ninja de elite' },
-  { rank: 'Anbu',   minPoints: 600, color: '#CC2222', desc: 'Força especial secreta' },
-  { rank: 'Kage',   minPoints: 1000,color: '#FFCC00', desc: 'Líder supremo de Vila' },
+  { rank: 'Genin',  minPoints: 0,    color: '#22AA44', desc: 'Iniciante da aldeia' },
+  { rank: 'Chunin', minPoints: 300,  color: '#0088FF', desc: 'Ninja intermediário' },
+  { rank: 'Jonin',  minPoints: 800,  color: '#AA44FF', desc: 'Ninja de elite' },
+  { rank: 'Anbu',   minPoints: 1800, color: '#CC2222', desc: 'Força especial secreta' },
+  { rank: 'Kage',   minPoints: 3500, color: '#FFCC00', desc: 'Líder supremo de Vila' },
 ]
 
 export const getRankByPoints = (pts) => {
@@ -142,8 +142,8 @@ const MISSIONS = [
   {
     id: 'c07', category: 'Exame Chunin', difficulty: 'B-Rank',
     name: 'Graduado!',
-    desc: 'Alcance 100 pontos de rank para se tornar Chunin.',
-    type: 'rank_points', target: 100,
+    desc: 'Alcance 300 pontos de rank para se tornar Chunin. Vença batalhas e complete missões para subir.',
+    type: 'rank_points', target: 300,
     rewards: { rankPoints: 0, ryo: 500 },
     unlockChar: 'zabuza',
   },
@@ -200,8 +200,8 @@ const MISSIONS = [
   {
     id: 'j07', category: 'Missões Jonin', difficulty: 'A-Rank',
     name: 'Promovido a Jonin',
-    desc: 'Alcance 300 pontos de rank para se tornar Jonin.',
-    type: 'rank_points', target: 300,
+    desc: 'Alcance 800 pontos de rank para se tornar Jonin. Provar que é um ninja de elite.',
+    type: 'rank_points', target: 800,
     rewards: { rankPoints: 0, ryo: 1000 },
     unlockChar: 'tsunade',
   },
@@ -250,8 +250,8 @@ const MISSIONS = [
   {
     id: 'a06', category: 'Operações ANBU', difficulty: 'S-Rank',
     name: 'Força Anbu',
-    desc: 'Alcance 600 pontos de rank para entrar no ANBU.',
-    type: 'rank_points', target: 600,
+    desc: 'Alcance 1800 pontos de rank para entrar no ANBU. Apenas os melhores chegam aqui.',
+    type: 'rank_points', target: 1800,
     rewards: { rankPoints: 0, ryo: 2000 },
     unlockChar: 'sasuke_s',
   },
@@ -308,8 +308,8 @@ const MISSIONS = [
   {
     id: 'k07', category: 'Missões de Kage', difficulty: 'S-Rank',
     name: 'Lenda dos Lendários',
-    desc: 'Alcance 1000 pontos de rank para se tornar Kage.',
-    type: 'rank_points', target: 1000,
+    desc: 'Alcance 3500 pontos de rank para se tornar Kage. O título máximo de shinobi.',
+    type: 'rank_points', target: 3500,
     rewards: { rankPoints: 0, ryo: 5000 },
     unlockChar: 'pain',
   },

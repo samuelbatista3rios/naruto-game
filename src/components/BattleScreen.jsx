@@ -102,43 +102,56 @@ function CostPips({ cost }) {
 // ─────────────────────────────────────────────────────────────
 //  FighterCard
 // ─────────────────────────────────────────────────────────────
-function FighterCard({ fighter, isActive, isTarget, isAllyTarget, isDead, isIdle, onClick }) {
+function FighterCard({ fighter, isActive, isTarget, isAllyTarget, isDead, isIdle, hasActed, isStunned, onClick }) {
   const pct    = Math.max(0, (fighter.currentHp / fighter.maxHp) * 100)
   const barCls = hpClass(fighter.currentHp, fighter.maxHp)
 
   let cls = 'fighter-card'
-  if (isDead) cls += ' dead'
-  else if (isActive)    cls += ' active-f'
-  else if (isTarget)    cls += ' target-f'
+  if (isDead)          cls += ' dead'
+  else if (hasActed)   cls += ' acted'
+  else if (isActive)   cls += ' active-f'
+  else if (isTarget)   cls += ' target-f'
   else if (isAllyTarget) cls += ' ally-f'
-  else if (isIdle)      cls += ' idle'
+  else if (isIdle)     cls += ' idle'
 
   return (
     <div className={cls}
       style={{
         background: isDead
           ? '#0a0a0a'
+          : hasActed
+          ? `linear-gradient(160deg, #1a1a2a 0%, #0d1117 60%)`
           : `linear-gradient(160deg, ${fighter.color}18 0%, #0d1117 60%)`,
-        borderColor: isActive ? fighter.color : undefined,
+        borderColor: isActive ? fighter.color : hasActed ? '#333' : undefined,
       }}
       onClick={!isDead ? onClick : undefined}>
 
+      {/* Acted / Stun overlay badge */}
+      {hasActed && !isDead && (
+        <div className="fighter-acted-badge">✓ Agiu</div>
+      )}
+      {isStunned && !isDead && !hasActed && (
+        <div className="fighter-stun-badge">💫 Preso</div>
+      )}
+
       {/* Avatar */}
       <div className="fighter-emoji">
-        <CharAvatar char={fighter} size="md" shape="circle" isDead={isDead} />
+        <CharAvatar char={fighter} size="md" shape="circle" isDead={isDead || hasActed} />
       </div>
 
       {/* Name */}
-      <div className="fighter-name" style={{ color: isDead ? '#444' : undefined }}>
+      <div className="fighter-name" style={{ color: isDead ? '#444' : hasActed ? '#555' : undefined }}>
         {fighter.name.split(' ')[0]}
       </div>
 
       {/* HP */}
       {!isDead && (
         <>
-          <div className="fighter-hp-row">{fighter.currentHp}/{fighter.maxHp}</div>
+          <div className="fighter-hp-row" style={{ color: hasActed ? '#555' : undefined }}>
+            {fighter.currentHp}/{fighter.maxHp}
+          </div>
           <div className="hp-bar-wrap" style={{ width: '90%' }}>
-            <div className={`hp-bar ${barCls}`} style={{ width: `${pct}%` }} />
+            <div className={`hp-bar ${barCls}`} style={{ width: `${pct}%`, opacity: hasActed ? 0.4 : 1 }} />
           </div>
         </>
       )}
@@ -241,16 +254,36 @@ export default function BattleScreen() {
     }
   }, [battle?.log])
 
+  // Auto-encerrar turno quando todos os personagens vivos já agiram
+  useEffect(() => {
+    if (!battle || battle.phase !== 'player' || battle.winner) return
+    const aliveIndices = battle.playerTeam
+      .map((f, i) => f.currentHp > 0 ? i : -1)
+      .filter(i => i >= 0)
+    if (aliveIndices.length === 0) return
+    const allActed = aliveIndices.every(i => (battle.actedThisTurn || []).includes(i))
+    if (!allActed) return
+    // Pequeno delay para o jogador ver a última ação antes do turno encerrar
+    const timer = setTimeout(() => dispatch({ type: 'END_TURN' }), 700)
+    return () => clearTimeout(timer)
+  }, [battle?.actedThisTurn, battle?.phase, battle?.winner])
+
   if (!battle) return null
 
   const {
     playerTeam, enemyTeam, chakra, turn, phase, winner,
     selectedCharIdx, targetMode, targetType, log, enemyTeamName,
+    actedThisTurn = [],
   } = battle
 
-  const selectedFighter = selectedCharIdx !== null ? playerTeam[selectedCharIdx] : null
-  const isPlayerTurn    = phase === 'player'
-  const isEnd           = phase === 'end'
+  const selectedFighter   = selectedCharIdx !== null ? playerTeam[selectedCharIdx] : null
+  const isPlayerTurn      = phase === 'player'
+  const isEnd             = phase === 'end'
+  const selectedHasActed  = selectedCharIdx !== null && actedThisTurn.includes(selectedCharIdx)
+  const allActed          = playerTeam.filter(f => f.currentHp > 0).every((_, idx) => {
+    const realIdx = playerTeam.indexOf(playerTeam.filter(f => f.currentHp > 0)[idx])
+    return actedThisTurn.includes(realIdx)
+  })
 
   // ── Handlers ──────────────────────────────────────────────
 
@@ -358,6 +391,8 @@ export default function BattleScreen() {
               isActive={selectedCharIdx === idx}
               isAllyTarget={!!(isPlayerTurn && targetMode && targetType === 'ally' && fighter.currentHp > 0)}
               isIdle={!isPlayerTurn || targetMode}
+              hasActed={!!(fighter.currentHp > 0 && actedThisTurn.includes(idx))}
+              isStunned={!!(fighter.currentHp > 0 && fighter.statuses?.some(s => s.type === 'stun'))}
               onClick={() => handlePlayerClick(idx)}
             />
           ))}
@@ -398,14 +433,24 @@ export default function BattleScreen() {
               <>
                 <div className="skill-panel-title">
                   {selectedFighter.emoji} {selectedFighter.name.split(' ')[0]}
-                  {selectedFighter.statuses.some(s => s.type === 'stun') && (
+                  {selectedHasActed && (
+                    <span style={{ color: '#44aa44', marginLeft: 6, fontSize: '0.7rem' }}>
+                      ✓ JÁ AGIU
+                    </span>
+                  )}
+                  {!selectedHasActed && selectedFighter.statuses.some(s => s.type === 'stun') && (
                     <span style={{ color: '#ff4444', marginLeft: 6, fontSize: '0.7rem' }}>
                       💫 ATORDOADO
                     </span>
                   )}
                 </div>
 
-                {selectedFighter.statuses.some(s => s.type === 'stun') ? (
+                {selectedHasActed ? (
+                  <div style={{ fontSize: '0.78rem', color: '#44aa44', textAlign: 'center', padding: '16px 8px', background: 'rgba(0,80,0,0.15)', borderRadius: '6px', margin: '4px' }}>
+                    ✓ <strong>{selectedFighter.name.split(' ')[0]}</strong> já usou sua habilidade neste turno.<br/>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>Encerre o turno ou escolha outro personagem.</span>
+                  </div>
+                ) : selectedFighter.statuses.some(s => s.type === 'stun') ? (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '16px 8px' }}>
                     💫 Personagem atordoado — não pode agir neste turno.
                   </div>
@@ -424,7 +469,7 @@ export default function BattleScreen() {
             ) : (
               <div className="skill-panel-hint">
                 {isPlayerTurn
-                  ? '👆 Selecione um personagem aliado para ver as habilidades'
+                  ? `👆 Selecione um personagem para agir (${actedThisTurn.filter(i => playerTeam[i]?.currentHp > 0).length}/${playerTeam.filter(f => f.currentHp > 0).length} agiram)`
                   : phase === 'ai'
                   ? '🤖 A IA está agindo...'
                   : '⚔ Batalha encerrada'}

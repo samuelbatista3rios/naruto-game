@@ -73,11 +73,23 @@ function deductChakra(chakra, cost) {
 
 function getCurrentRankName(rankPoints) {
   const ranks = [
-    { name:'Genin', min:0 }, { name:'Chunin', min:100 },
-    { name:'Jonin', min:300 }, { name:'Anbu', min:600 },
-    { name:'Kage', min:1000 },
+    { name:'Genin', min:0 }, { name:'Chunin', min:300 },
+    { name:'Jonin', min:800 }, { name:'Anbu', min:1800 },
+    { name:'Kage', min:3500 },
   ]
   return ranks.slice().reverse().find(r => rankPoints >= r.min)?.name || 'Genin'
+}
+
+// Pontos de rank ganhos por vitória (baseado no rank atual)
+function getRankWinPoints(rankName) {
+  const pts = { Genin:15, Chunin:22, Jonin:30, Anbu:45, Kage:70 }
+  return pts[rankName] || 15
+}
+
+// Pontos mínimos do rank (não pode cair abaixo do piso)
+function getRankFloor(rankName) {
+  const floors = { Genin:0, Chunin:300, Jonin:800, Anbu:1800, Kage:3500 }
+  return floors[rankName] || 0
 }
 
 // ────────────────────────────────────────────────────────────
@@ -568,6 +580,7 @@ function reducer(state, action) {
           pendingSkill: null,       // skill aguardando alvo
           targetMode: false,        // aguardando clique de alvo
           targetType: null,         // 'enemy' | 'ally'
+          actedThisTurn: [],        // índices dos personagens que já agiram neste turno
           log: [`⚔ Batalha vs ${enemy.teamName} — Lute!`],
           winner: null,
           damageDealt: 0,
@@ -581,9 +594,10 @@ function reducer(state, action) {
       if (b.phase !== 'player') return state
       const f = b.playerTeam[action.idx]
       if (!f || f.currentHp <= 0) return state
-      if (f.statuses.find(s => s.type === 'stun')) {
-        const log = [...b.log, `${f.name.split(' ')[0]} está atordoado!`]
-        return { ...state, battle: { ...b, log } }
+      // Permite selecionar mesmo quem já agiu (para ver status), mas o painel mostrará como bloqueado
+      if (f.statuses.find(s => s.type === 'stun') && !(b.actedThisTurn || []).includes(action.idx)) {
+        const log = [...b.log, `${f.name.split(' ')[0]} está atordoado e não pode agir!`]
+        return { ...state, battle: { ...b, log, selectedCharIdx: action.idx, pendingSkill: null, targetMode: false } }
       }
       return { ...state, battle: { ...b, selectedCharIdx: action.idx, pendingSkill: null, targetMode: false } }
     }
@@ -591,6 +605,8 @@ function reducer(state, action) {
     case 'SELECT_SKILL': {
       const b = state.battle
       if (b.phase !== 'player' || b.selectedCharIdx === null) return state
+      // Bloqueia personagem que já usou habilidade neste turno
+      if ((b.actedThisTurn || []).includes(b.selectedCharIdx)) return state
       const fighter = b.playerTeam[b.selectedCharIdx]
       const skill   = action.skill
 
@@ -661,18 +677,21 @@ function reducer(state, action) {
       progress.use_skill = (progress.use_skill || 0) + 1
       if (skill.id) progress[`use_skill_id_${skill.id}`] = (progress[`use_skill_id_${skill.id}`] || 0) + 1
 
+      // Adiciona o personagem à lista de "já agiu neste turno"
+      const newActed = [...new Set([...(b.actedThisTurn || []), charIdx])]
+
       if (winner) {
         return {
           ...state,
           player: { ...p, missionProgress: progress, totalDamage: (p.totalDamage || 0) + (tmpBattle.damageDealt || 0) },
-          battle: { ...tmpBattle, phase: 'end', winner, pendingSkill: null, targetMode: false },
+          battle: { ...tmpBattle, phase: 'end', winner, pendingSkill: null, targetMode: false, actedThisTurn: newActed },
         }
       }
 
       return {
         ...state,
         player: { ...p, missionProgress: progress },
-        battle: { ...tmpBattle, phase: 'player', pendingSkill: null, targetMode: false, selectedCharIdx: null },
+        battle: { ...tmpBattle, phase: 'player', pendingSkill: null, targetMode: false, selectedCharIdx: null, actedThisTurn: newActed },
       }
     }
 
@@ -724,6 +743,7 @@ function reducer(state, action) {
           selectedCharIdx: null,
           pendingSkill: null,
           targetMode: false,
+          actedThisTurn: [],   // ← reseta as ações ao início do novo turno
         },
       }
     }
@@ -756,6 +776,18 @@ function reducer(state, action) {
       p.ryo         = (p.ryo || 0) + ryoGain
       p.totalBattles = (p.totalBattles || 0) + 1
       p.totalDamage  = (p.totalDamage || 0) + (b.damageDealt || 0)
+
+      // ── Pontos de rank por vitória/derrota ───────────────────────
+      const currentRank  = getCurrentRankName(p.rankPoints || 0)
+      const rankPtsFloor = getRankFloor(currentRank)
+      if (win) {
+        // Vitória rende pontos de acordo com o rank atual
+        const ptsGanhos = getRankWinPoints(currentRank)
+        p.rankPoints = (p.rankPoints || 0) + ptsGanhos
+      } else {
+        // Derrota perde 5 pontos mas não cai abaixo do piso do rank atual
+        p.rankPoints = Math.max(rankPtsFloor, (p.rankPoints || 0) - 5)
+      }
 
       if (win) {
         progress.win_battles  = (progress.win_battles || 0) + 1

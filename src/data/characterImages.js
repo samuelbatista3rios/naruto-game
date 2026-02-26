@@ -61,6 +61,38 @@ export const CHARACTER_IMAGES = {
   madara:       `${W}/f/fd/Madara.png`,
   hashirama:    `${W}/7/7e/Hashirama_Senju.png`,
   naruto_bijuu: `${W}/7/7d/Naruto_Part_II.png`,
+  // -- EXAME CHUNIN / VILAES --
+  dosu:       `${W}/c/c9/Dosu_Kinuta.png`,
+  zaku:       `${W}/4/44/Zaku_Abumi.png`,
+  kin:        `${W}/4/4a/Kin_Tsuchi.png`,
+  yoroi:      `${W}/e/e6/Yoroi_Akado.png`,
+  // -- JONINS E INSTRUTORES --
+  iruka:      `${W}/d/d6/Iruka_Umino.png`,
+  anko:       `${W}/5/50/Anko_Mitarashi.png`,
+  ibiki:      `${W}/3/37/Ibiki_Morino.png`,
+  hayate:     `${W}/b/b4/Hayate_Gek%C5%8D.png`,
+  genma:      `${W}/6/68/Genma_Shiranui.png`,
+  baki:       `${W}/6/6e/Baki.png`,
+  chiyo:      `${W}/1/1a/Chiyo.png`,
+  rasa:       `${W}/5/59/Rasa.png`,
+  mifune:     `${W}/b/b9/Mifune.png`,
+  // -- ESPADACHINS DA NEVOA --
+  suigetsu:   `${W}/4/44/Suigetsu_H%C5%8Dzuki.png`,
+  ameyuri:    `${W}/4/4b/Ameyuri_Ringo.png`,
+  chojuro:    `${W}/1/18/Chojuro.png`,
+  // -- JINCHUURIKI --
+  yugito:     `${W}/5/5e/Yugito_Ni%C4%AB.png`,
+  yagura:     `${W}/9/99/Yagura_Karatachi.png`,
+  han:        `${W}/b/ba/Han.png`,
+  utakata:    `${W}/8/86/Utakata.png`,
+  fu:         `${W}/2/26/F%C5%AB.png`,
+  // -- KAGES --
+  hiruzen:    `${W}/4/40/Hiruzen_Sarutobi.png`,
+  mei:        `${W}/0/09/Mei_Terumi.png`,
+  onoki:      `${W}/3/3f/%C5%8Cn%C5%8Dki.png`,
+  raikage_a:  `${W}/b/b5/Fourth_Raikage.png`,
+  darui:      `${W}/e/e5/Darui.png`,
+  kurotsuchi: `${W}/3/3b/Kurotsuchi.png`,
 }
 
 // Habilidades iconicas — imagens para os jutsus mais famosos
@@ -93,6 +125,21 @@ export const SKILL_IMAGES = {
 
   // Minato
   minato_3: `${W}/0/0a/Rasengan_Naruto.png`,
+  // Rock Lee
+  rl4:        `${W}/d/d9/Night_Guy.png`,
+  // Kages
+  sar4:       `${W}/a/a6/Shiki_Fujin.png`,
+  ono4:       `${W}/3/36/Jinton_Genkai_Hakuri_no_Jutsu.png`,
+  rai4:       `${W}/e/e2/Double_Lariat.png`,
+  yug4:       `${W}/7/73/Bijuudama.png`,
+  yag4:       `${W}/7/73/Bijuudama.png`,
+  han4:       `${W}/7/73/Bijuudama.png`,
+  uta4:       `${W}/7/73/Bijuudama.png`,
+  fu4:        `${W}/7/73/Bijuudama.png`,
+  bee4:       `${W}/7/73/Bijuudama.png`,
+  // Minato
+  mn3:        `${W}/0/0a/Rasengan_Naruto.png`,
+
 }
 
 export default CHARACTER_IMAGES

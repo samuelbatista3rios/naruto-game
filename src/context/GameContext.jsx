@@ -297,6 +297,10 @@ function resolveAction(battle, actorTeam, actorIdx, skill, targetTeam, targetIdx
     const analyze = defender.statuses.find(s => s.type === 'analyze')
     if (analyze) { dmg = Math.floor(dmg * (1 - analyze.value)) }
 
+    // Ataque básico (kunai) sempre causa pelo menos 1 de dano
+    // Escudos reduzem mas não bloqueiam completamente — invulnerabilidade ainda bloqueia
+    if (skill.isBasic && !invul) dmg = Math.max(1, dmg)
+
     return Math.max(0, dmg)
   }
 

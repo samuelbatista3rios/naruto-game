@@ -14,10 +14,16 @@ const CHAKRA_META = [
   { key: 'ran',   label: 'Ran',  color: '#888888' },
 ]
 
-// Can the player afford this skill?
+// Can the player afford this skill? (chakra)
 function canAfford(skill, chakra) {
   if (skill.isBasic || skill.isSubstitution) return true
   return Object.entries(skill.cost || {}).every(([t, n]) => (chakra[t] || 0) >= n)
+}
+
+// Verifica estamina para kunai/substituição
+function canAffordStamina(skill, fighter) {
+  if (!skill.isBasic && !skill.isSubstitution) return true
+  return (fighter?.currentStamina || 0) >= (skill.staminaCost || 0)
 }
 
 // HP percentage color
@@ -102,9 +108,10 @@ function CostPips({ cost }) {
 // ─────────────────────────────────────────────────────────────
 //  FighterCard
 // ─────────────────────────────────────────────────────────────
-function FighterCard({ fighter, isActive, isTarget, isAllyTarget, isDead, isIdle, hasActed, isStunned, onClick }) {
+function FighterCard({ fighter, isActive, isTarget, isAllyTarget, isDead, isIdle, hasActed, isStunned, showStamina, onClick }) {
   const pct    = Math.max(0, (fighter.currentHp / fighter.maxHp) * 100)
   const barCls = hpClass(fighter.currentHp, fighter.maxHp)
+  const stPct  = Math.max(0, ((fighter.currentStamina || 0) / (fighter.maxStamina || 100)) * 100)
 
   let cls = 'fighter-card'
   if (isDead)          cls += ' dead'
@@ -153,6 +160,23 @@ function FighterCard({ fighter, isActive, isTarget, isAllyTarget, isDead, isIdle
           <div className="hp-bar-wrap" style={{ width: '90%' }}>
             <div className={`hp-bar ${barCls}`} style={{ width: `${pct}%`, opacity: hasActed ? 0.4 : 1 }} />
           </div>
+          {/* Stamina bar — apenas para o time do jogador */}
+          {showStamina && (
+            <div style={{ width: '90%', marginTop: 2 }}>
+              <div style={{
+                width: '100%', height: 4, background: '#111', borderRadius: 2, overflow: 'hidden',
+              }}>
+                <div style={{
+                  width: `${stPct}%`, height: '100%',
+                  background: stPct > 50 ? '#22aaff' : stPct > 20 ? '#ff9900' : '#cc2222',
+                  transition: 'width 0.3s',
+                }} />
+              </div>
+              <div style={{ fontSize: '0.45rem', color: '#4499cc', textAlign: 'center', marginTop: 1 }}>
+                ST {fighter.currentStamina || 0}/{fighter.maxStamina || 100}
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -166,10 +190,11 @@ function FighterCard({ fighter, isActive, isTarget, isAllyTarget, isDead, isIdle
 //  SkillButton
 // ─────────────────────────────────────────────────────────────
 function SkillButton({ skill, fighter, chakra, onClick }) {
-  const affordable = canAfford(skill, chakra)
-  const onCooldown = !skill.isBasic && !skill.isSubstitution && (fighter.cooldowns?.[skill.id] > 0)
-  const substUsed  = skill.isSubstitution && fighter.substUsed
-  const disabled   = !affordable || onCooldown || substUsed
+  const affordable    = canAfford(skill, chakra)
+  const staminaOk     = canAffordStamina(skill, fighter)
+  const onCooldown    = !skill.isBasic && !skill.isSubstitution && (fighter.cooldowns?.[skill.id] > 0)
+  const substUsed     = skill.isSubstitution && fighter.substUsed
+  const disabled      = !affordable || !staminaOk || onCooldown || substUsed
 
   let extraCls = ''
   if (skill.isBasic)        extraCls = ' basic'
@@ -191,9 +216,17 @@ function SkillButton({ skill, fighter, chakra, onClick }) {
       <div className="skill-btn-meta">
         {skill.damage > 0 && <span className="skill-dmg">⚔ {skill.damage}</span>}
         {skill.heal   > 0 && <span className="skill-heal">💚 +{skill.heal}</span>}
+        {(skill.isBasic || skill.isSubstitution) && skill.staminaCost > 0 && (
+          <span style={{ fontSize: '0.62rem', color: staminaOk ? '#22aaff' : '#cc4422', fontWeight: 700 }}>
+            💧 {skill.staminaCost} EST
+          </span>
+        )}
         <CostPips cost={skill.cost} />
         {!affordable && !onCooldown && !substUsed && (
           <span style={{ fontSize: '0.62rem', color: '#cc4422' }}>Chakra insuf.</span>
+        )}
+        {!staminaOk && !onCooldown && !substUsed && affordable && (
+          <span style={{ fontSize: '0.62rem', color: '#cc4422' }}>Estamina insuf.</span>
         )}
       </div>
     </button>
@@ -393,6 +426,7 @@ export default function BattleScreen() {
               isIdle={!isPlayerTurn || targetMode}
               hasActed={!!(fighter.currentHp > 0 && actedThisTurn.includes(idx))}
               isStunned={!!(fighter.currentHp > 0 && fighter.statuses?.some(s => s.type === 'stun'))}
+              showStamina={true}
               onClick={() => handlePlayerClick(idx)}
             />
           ))}

@@ -26,10 +26,13 @@ function loadSave() {
 function makeFighter(charId) {
   const base = CHARACTERS.find(c => c.id === charId)
   if (!base) return null
+  const maxSt = base.maxStamina || 100
   return {
     ...base,
     currentHp: base.hp,
     maxHp: base.hp,
+    currentStamina: maxSt,
+    maxStamina: maxSt,
     statuses: [],          // { type, name, duration, dot?, hot?, power?, value? }
     cooldowns: {},         // { skillId: turnsLeft }
     substUsed: false,      // substituição já usada nesta batalha
@@ -63,6 +66,13 @@ function generateChakra(current) {
 function canAfford(skill, chakra) {
   if (skill.isBasic || skill.isSubstitution) return true
   return Object.entries(skill.cost).every(([t, n]) => (chakra[t] || 0) >= n)
+}
+
+// Verifica se o lutador tem estamina suficiente para a skill (kunai/substituição)
+function canAffordStamina(skill, fighter) {
+  if (!skill.isBasic && !skill.isSubstitution) return true
+  const cost = skill.staminaCost || 0
+  return (fighter.currentStamina || 0) >= cost
 }
 
 function deductChakra(chakra, cost) {
@@ -458,13 +468,14 @@ function checkWinner(playerTeam, enemyTeam) {
 // ────────────────────────────────────────────────────────────
 function runAiTurn(battle) {
   let b = { ...battle }
-  const log = [...b.log]
-  log.push('— IA age —')
+
+  // Adiciona cabeçalho do turno da IA diretamente em b.log
+  b.log = [...(b.log || []), '🤖 — Turno do Inimigo —']
 
   b.enemyTeam.forEach((enemy, eIdx) => {
     if (enemy.currentHp <= 0) return
     if (enemy.statuses.find(s => s.type === 'stun')) {
-      log.push(`${enemy.name.split(' ')[0]} está atordoado!`)
+      b.log = [...b.log, `💫 ${enemy.name.split(' ')[0]} está atordoado e não pode agir!`]
       return
     }
 
@@ -472,12 +483,11 @@ function runAiTurn(battle) {
     if (!alivePlayers.length) return
 
     // AI escolhe skill baseado em estratégia simples
-    const aiChakra = { nin:5, tai:5, gen:5, blood:4, ran:4 } // IA tem chakra ilimitado simplificado
+    const aiChakra = { nin:5, tai:5, gen:5, blood:4, ran:4 }
     const available = enemy.skills.filter(sk =>
       canAfford(sk, aiChakra) && !(enemy.cooldowns[sk.id] > 0)
     )
     if (!available.length) {
-      // usa kunai básico
       const weakest = alivePlayers.reduce((m, p) => p.currentHp < m.currentHp ? p : m, alivePlayers[0])
       const tIdx = b.playerTeam.indexOf(weakest)
       b = resolveAction(b, 'enemyTeam', eIdx, BASIC_KUNAI, 'playerTeam', tIdx)
@@ -490,7 +500,6 @@ function runAiTurn(battle) {
       const heal = available.find(sk => sk.heal > 0 || sk.effect?.includes('regen') || sk.effect?.includes('shield'))
       if (heal) chosen = heal
     } else {
-      // prefere maior dano
       chosen = available.reduce((best, sk) => {
         const dmg = sk.damage + (sk.target === 'all_enemy' ? 1000 : 0)
         const bestDmg = best.damage + (best.target === 'all_enemy' ? 1000 : 0)
@@ -509,7 +518,7 @@ function runAiTurn(battle) {
     }
   })
 
-  b.log = [...(b.log || []), ...log].slice(-50)
+  b.log = (b.log || []).slice(-60)
   return b
 }
 
@@ -615,6 +624,8 @@ function reducer(state, action) {
         const onCd = fighter.cooldowns[skill.id] > 0
         if (onCd) return state
       }
+      // Kunai e Substituição gastam estamina
+      if ((skill.isBasic || skill.isSubstitution) && !canAffordStamina(skill, fighter)) return state
       if (skill.isSubstitution && fighter.substUsed) return state
 
       // Se skill é AoE ou self → executa imediatamente
@@ -650,10 +661,16 @@ function reducer(state, action) {
         chakra = deductChakra(chakra, skill.cost)
       }
 
-      // Marcar substituição usada
+      // Marcar substituição usada + descontar estamina de kunai/substituição
       let playerTeam = b.playerTeam.map((f, i) => {
-        if (i === charIdx && skill.isSubstitution) return { ...f, substUsed: true }
-        return f
+        if (i !== charIdx) return f
+        let updated = { ...f }
+        if (skill.isSubstitution) updated.substUsed = true
+        if (skill.isBasic || skill.isSubstitution) {
+          const stCost = skill.staminaCost || 0
+          updated.currentStamina = Math.max(0, (f.currentStamina || 0) - stCost)
+        }
+        return updated
       })
       let tmpBattle = { ...b, playerTeam, chakra }
 
@@ -728,6 +745,14 @@ function reducer(state, action) {
       let pTeam2 = tickStatuses(aiState.playerTeam)
       let eTeam2 = tickStatuses(aiState.enemyTeam)
       winner = checkWinner(pTeam2, eTeam2)
+
+      // Regenerar estamina dos personagens do jogador (+15 por turno)
+      const STAMINA_REGEN = 15
+      pTeam2 = pTeam2.map(f => {
+        if (f.currentHp <= 0) return f
+        const maxSt = f.maxStamina || 100
+        return { ...f, currentStamina: Math.min(maxSt, (f.currentStamina || 0) + STAMINA_REGEN) }
+      })
 
       const allAlive = pTeam2.every(f => f.currentHp > 0)
 

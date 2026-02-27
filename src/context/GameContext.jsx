@@ -13,7 +13,7 @@ const STARTER_CHARS = [
   'rock_lee','neji','shikamaru','gaara','hinata',
 ]
 
-const CHAKRA_REGEN_PER_TURN = 3   // nº de chakras gerados por turno
+const CHAKRA_REGEN_PER_TURN = 5   // nº de chakras gerados por turno
 const MAX_CHAKRA_PER_TYPE   = 9   // máximo por tipo
 
 // ────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ function randomEnemyTeam(rankName) {
 }
 
 function generateChakra(current) {
-  const types  = ['nin','tai','gen','ran']
+  const types  = ['nin','tai','gen','blood','ran']
   const result = { ...current }
   for (let i = 0; i < CHAKRA_REGEN_PER_TURN; i++) {
     const t = types[Math.floor(Math.random() * types.length)]
@@ -597,7 +597,7 @@ function reducer(state, action) {
       const rankName  = getCurrentRankName(state.player.rankPoints || 0)
       const enemy     = randomEnemyTeam(rankName)
       const playerTeam = state.selectedTeam.map(id => makeFighter(id)).filter(Boolean)
-      const chakra     = generateChakra({ nin:2, tai:2, gen:2, blood:0, ran:1 })
+      const chakra     = generateChakra({ nin:2, tai:2, gen:2, blood:1, ran:1 })
       return {
         ...state,
         screen: 'battle',

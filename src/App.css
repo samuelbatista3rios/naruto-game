@@ -482,6 +482,41 @@ body {
 .modal-skill-desc { font-size: 0.68rem; color: var(--text-secondary); line-height: 1.35; }
 .modal-skill-stats { display: flex; gap: 10px; margin-top: 4px; font-size: 0.68rem; flex-wrap: wrap; }
 
+/* ────── UNLOCK CODE ────── */
+.unlock-code-section {
+  margin-top: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.unlock-code-toggle {
+  background: none; border: 1px solid var(--border); color: var(--text-secondary);
+  font-size: 0.68rem; padding: 5px 12px; border-radius: 20px; cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.unlock-code-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.unlock-code-form {
+  display: flex; gap: 6px; align-items: center;
+}
+.unlock-code-input {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-primary); font-size: 0.8rem; padding: 6px 10px; outline: none;
+  width: 180px; letter-spacing: 1px;
+}
+.unlock-code-input:focus { border-color: var(--accent); }
+.unlock-code-btn {
+  background: linear-gradient(135deg, #ff7700, #cc4400); border: none; border-radius: 6px;
+  color: #fff; font-size: 1rem; padding: 6px 10px; cursor: pointer;
+}
+.unlock-code-btn:hover { background: linear-gradient(135deg, var(--accent), #cc5500); }
+.unlock-code-cancel {
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text-secondary); font-size: 0.75rem; padding: 5px 8px; cursor: pointer;
+}
+.unlock-code-cancel:hover { border-color: #cc4422; color: #cc4422; }
+.unlock-code-msg {
+  font-size: 0.72rem; padding: 4px 12px; border-radius: 20px; font-weight: 700;
+}
+.unlock-code-msg.ok { color: #44cc77; background: rgba(68,204,119,0.12); }
+.unlock-code-msg.err { color: #cc4422; background: rgba(204,68,34,0.12); }
+
 /* ────── UTILITY ────── */
 .text-orange { color: var(--accent); }
 .text-green  { color: #44cc77; }

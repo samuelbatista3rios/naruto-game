@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useGame } from '../context/GameContext'
 import { RANK_INFO, getRankByPoints } from '../data/missions'
 import CHARACTERS from '../data/characters'
@@ -47,10 +47,16 @@ function RankProgress({ rankPoints }) {
   )
 }
 
+const SECRET_CODE = 'DATTEBAYO'
+
 export default function MainMenu() {
   const { player, rankName, selectedTeam, dispatch } = useGame()
   const rankInfo = getRankByPoints(player.rankPoints || 0)
   const rankColor = RANK_COLORS[rankName] || '#888'
+
+  const [codeInput, setCodeInput] = useState('')
+  const [codeMsg, setCodeMsg] = useState(null)
+  const [showCodeInput, setShowCodeInput] = useState(false)
 
   const winRate = player.totalBattles > 0
     ? Math.round((player.wins / player.totalBattles) * 100)
@@ -60,6 +66,20 @@ export default function MainMenu() {
   const teamChars = (selectedTeam || [])
     .map(id => CHARACTERS.find(c => c.id === id))
     .filter(Boolean)
+
+  const handleCodeSubmit = (e) => {
+    e.preventDefault()
+    const code = codeInput.trim().toUpperCase()
+    if (code === SECRET_CODE) {
+      dispatch({ type: 'UNLOCK_ALL_CHARS' })
+      setCodeMsg({ ok: true, text: '✅ Todos os personagens desbloqueados!' })
+      setShowCodeInput(false)
+    } else {
+      setCodeMsg({ ok: false, text: '❌ Código inválido!' })
+    }
+    setCodeInput('')
+    setTimeout(() => setCodeMsg(null), 3000)
+  }
 
   return (
     <div className="main-menu">
@@ -185,6 +205,42 @@ export default function MainMenu() {
       <div style={{ marginTop: '24px', fontSize: '0.65rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
         {player.unlockedChars?.length || 0} / {CHARACTERS.length} personagens •{' '}
         {player.completedMissions?.length || 0} missões • Rank {rankName}
+      </div>
+
+      {/* Unlock code section */}
+      <div className="unlock-code-section">
+        {!showCodeInput ? (
+          <button
+            className="unlock-code-toggle"
+            onClick={() => setShowCodeInput(true)}
+            title="Inserir código secreto"
+          >
+            🔐 Código Secreto
+          </button>
+        ) : (
+          <form className="unlock-code-form" onSubmit={handleCodeSubmit}>
+            <input
+              className="unlock-code-input"
+              type="text"
+              placeholder="Digite o código..."
+              value={codeInput}
+              onChange={e => setCodeInput(e.target.value)}
+              autoFocus
+              maxLength={32}
+            />
+            <button type="submit" className="unlock-code-btn">🔓</button>
+            <button
+              type="button"
+              className="unlock-code-cancel"
+              onClick={() => { setShowCodeInput(false); setCodeInput('') }}
+            >✕</button>
+          </form>
+        )}
+        {codeMsg && (
+          <div className={`unlock-code-msg ${codeMsg.ok ? 'ok' : 'err'}`}>
+            {codeMsg.text}
+          </div>
+        )}
       </div>
     </div>
   )

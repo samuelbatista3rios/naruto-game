@@ -472,26 +472,36 @@ function runAiTurn(battle) {
   // Adiciona cabeçalho do turno da IA diretamente em b.log
   b.log = [...(b.log || []), '🤖 — Turno do Inimigo —']
 
-  b.enemyTeam.forEach((enemy, eIdx) => {
-    if (enemy.currentHp <= 0) return
+  // Rastreia quais inimigos já agiram neste turno (impede ação dupla)
+  const actedEnemies = new Set()
+
+  for (let eIdx = 0; eIdx < b.enemyTeam.length; eIdx++) {
+    if (actedEnemies.has(eIdx)) continue
+
+    // Lê sempre o estado ATUAL do inimigo (não a referência original)
+    const enemy = b.enemyTeam[eIdx]
+    if (enemy.currentHp <= 0) { actedEnemies.add(eIdx); continue }
     if (enemy.statuses.find(s => s.type === 'stun')) {
       b.log = [...b.log, `💫 ${enemy.name.split(' ')[0]} está atordoado e não pode agir!`]
-      return
+      actedEnemies.add(eIdx)
+      continue
     }
 
     const alivePlayers = b.playerTeam.filter(f => f.currentHp > 0)
-    if (!alivePlayers.length) return
+    if (!alivePlayers.length) break
 
     // AI escolhe skill baseado em estratégia simples
     const aiChakra = { nin:5, tai:5, gen:5, blood:4, ran:4 }
     const available = enemy.skills.filter(sk =>
       canAfford(sk, aiChakra) && !(enemy.cooldowns[sk.id] > 0)
     )
+
     if (!available.length) {
       const weakest = alivePlayers.reduce((m, p) => p.currentHp < m.currentHp ? p : m, alivePlayers[0])
       const tIdx = b.playerTeam.indexOf(weakest)
       b = resolveAction(b, 'enemyTeam', eIdx, BASIC_KUNAI, 'playerTeam', tIdx)
-      return
+      actedEnemies.add(eIdx)
+      continue
     }
 
     // Prioridade: cura se HP baixo, senão maior dano
@@ -501,8 +511,10 @@ function runAiTurn(battle) {
       if (heal) chosen = heal
     } else {
       chosen = available.reduce((best, sk) => {
-        const dmg = sk.damage + (sk.target === 'all_enemy' ? 1000 : 0)
-        const bestDmg = best.damage + (best.target === 'all_enemy' ? 1000 : 0)
+        const isAoE = sk.target === 'all_enemy' || sk.target === 'all_ally'
+        const dmg = sk.damage + (isAoE ? 1000 : 0)
+        const bestIsAoE = best.target === 'all_enemy' || best.target === 'all_ally'
+        const bestDmg = best.damage + (bestIsAoE ? 1000 : 0)
         return dmg > bestDmg ? sk : best
       }, available[0])
     }
@@ -512,11 +524,18 @@ function runAiTurn(battle) {
     const tIdx = b.playerTeam.indexOf(weakest)
 
     b = resolveAction(b, 'enemyTeam', eIdx, chosen, 'playerTeam', tIdx)
-    b.enemyTeam[eIdx] = {
-      ...b.enemyTeam[eIdx],
-      cooldowns: { ...b.enemyTeam[eIdx].cooldowns, ...(chosen.cooldown ? { [chosen.id]: chosen.cooldown } : {}) }
+    // Atualiza cooldowns no estado corrente (imutável)
+    b = {
+      ...b,
+      enemyTeam: b.enemyTeam.map((e, i) =>
+        i !== eIdx ? e : {
+          ...e,
+          cooldowns: { ...e.cooldowns, ...(chosen.cooldown ? { [chosen.id]: chosen.cooldown } : {}) }
+        }
+      )
     }
-  })
+    actedEnemies.add(eIdx)
+  }
 
   b.log = (b.log || []).slice(-60)
   return b
@@ -857,6 +876,11 @@ function reducer(state, action) {
 
     case 'CANCEL_TARGET':
       return { ...state, battle: { ...state.battle, pendingSkill: null, targetMode: false, selectedCharIdx: null } }
+
+    case 'UNLOCK_ALL_CHARS': {
+      const allIds = CHARACTERS.map(c => c.id)
+      return { ...state, player: { ...state.player, unlockedChars: allIds } }
+    }
 
     default:
       return state

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useGame } from '../context/GameContext'
 import { BASIC_KUNAI, SUBSTITUTION } from '../data/characters'
 import CharAvatar, { SkillIcon } from './CharAvatar'
@@ -108,7 +108,7 @@ function CostPips({ cost }) {
 // ─────────────────────────────────────────────────────────────
 //  FighterCard
 // ─────────────────────────────────────────────────────────────
-function FighterCard({ fighter, isActive, isTarget, isAllyTarget, isDead, isIdle, hasActed, isStunned, showStamina, onClick }) {
+function FighterCard({ fighter, isActive, isTarget, isAllyTarget, isDead, isIdle, hasActed, isStunned, showStamina, animClass, onClick }) {
   const pct    = Math.max(0, (fighter.currentHp / fighter.maxHp) * 100)
   const barCls = hpClass(fighter.currentHp, fighter.maxHp)
   const stPct  = Math.max(0, ((fighter.currentStamina || 0) / (fighter.maxStamina || 100)) * 100)
@@ -122,7 +122,7 @@ function FighterCard({ fighter, isActive, isTarget, isAllyTarget, isDead, isIdle
   else if (isIdle)     cls += ' idle'
 
   return (
-    <div className={cls}
+    <div className={`${cls}${animClass ? ` ${animClass}` : ''}`}
       style={{
         background: isDead
           ? '#0a0a0a'
@@ -278,7 +278,10 @@ function BattleResult({ battle, onClaim }) {
 // ─────────────────────────────────────────────────────────────
 export default function BattleScreen() {
   const { battle, dispatch } = useGame()
-  const logRef = useRef(null)
+  const logRef      = useRef(null)
+  const prevHPRef   = useRef(null)
+  const animTimerRef = useRef(null)
+  const [hitAnims, setHitAnims] = useState({ player: {}, enemy: {} })
 
   // Auto-scroll battle log
   useEffect(() => {
@@ -286,6 +289,38 @@ export default function BattleScreen() {
       logRef.current.scrollTop = logRef.current.scrollHeight
     }
   }, [battle?.log])
+
+  // Detecta mudanças de HP e dispara animações de hit/heal
+  useEffect(() => {
+    if (!battle) { prevHPRef.current = null; return }
+
+    if (prevHPRef.current) {
+      const newAnims = { player: {}, enemy: {} }
+      battle.playerTeam.forEach((f, i) => {
+        const prevHp = prevHPRef.current.playerTeam[i]?.hp
+        if (prevHp === undefined) return
+        if (f.currentHp < prevHp) newAnims.player[i] = 'hit-anim'
+        else if (f.currentHp > prevHp) newAnims.player[i] = 'heal-anim'
+      })
+      battle.enemyTeam.forEach((f, i) => {
+        const prevHp = prevHPRef.current.enemyTeam[i]?.hp
+        if (prevHp === undefined) return
+        if (f.currentHp < prevHp) newAnims.enemy[i] = 'hit-anim'
+        else if (f.currentHp > prevHp) newAnims.enemy[i] = 'heal-anim'
+      })
+      const hasAnim = Object.keys(newAnims.player).length > 0 || Object.keys(newAnims.enemy).length > 0
+      if (hasAnim) {
+        clearTimeout(animTimerRef.current)
+        setHitAnims(newAnims)
+        animTimerRef.current = setTimeout(() => setHitAnims({ player: {}, enemy: {} }), 500)
+      }
+    }
+
+    prevHPRef.current = {
+      playerTeam: battle.playerTeam.map(f => ({ hp: f.currentHp })),
+      enemyTeam:  battle.enemyTeam.map(f => ({ hp: f.currentHp })),
+    }
+  }, [battle])
 
   // Auto-encerrar turno quando todos os personagens vivos já agiram
   useEffect(() => {
@@ -393,6 +428,7 @@ export default function BattleScreen() {
               isDead={fighter.currentHp <= 0}
               isTarget={!!(isPlayerTurn && targetMode && targetType === 'enemy' && fighter.currentHp > 0)}
               isIdle={!isPlayerTurn || !targetMode}
+              animClass={hitAnims.enemy[idx]}
               onClick={() => handleEnemyClick(idx)}
             />
           ))}
@@ -427,6 +463,7 @@ export default function BattleScreen() {
               hasActed={!!(fighter.currentHp > 0 && actedThisTurn.includes(idx))}
               isStunned={!!(fighter.currentHp > 0 && fighter.statuses?.some(s => s.type === 'stun'))}
               showStamina={true}
+              animClass={hitAnims.player[idx]}
               onClick={() => handlePlayerClick(idx)}
             />
           ))}

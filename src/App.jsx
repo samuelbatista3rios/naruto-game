@@ -5,6 +5,7 @@ import CharacterSelect from './components/CharacterSelect'
 import BattleScreen from './components/BattleScreen'
 import MissionBoard from './components/MissionBoard'
 import CharacterRoster from './components/CharacterRoster'
+import Shop from './components/Shop'
 
 function AppContent() {
   const { screen } = useGame()
@@ -15,6 +16,7 @@ function AppContent() {
       {screen === 'battle'  && <BattleScreen />}
       {screen === 'missions'&& <MissionBoard />}
       {screen === 'roster'  && <CharacterRoster />}
+      {screen === 'shop'    && <Shop />}
     </div>
   )
 }

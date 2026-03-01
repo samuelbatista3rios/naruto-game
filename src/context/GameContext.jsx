@@ -473,72 +473,74 @@ function checkWinner(playerTeam, enemyTeam) {
 function runAiTurn(battle) {
   let b = { ...battle }
 
-  // Adiciona cabeçalho do turno da IA diretamente em b.log
   b.log = [...(b.log || []), '🤖 — Turno do Inimigo —']
 
-  // Rastreia quais inimigos já agiram neste turno (impede ação dupla)
-  const actedEnemies = new Set()
+  const aiChakra = { nin:5, tai:5, gen:5, blood:4, ran:4 }
 
-  for (let eIdx = 0; eIdx < b.enemyTeam.length; eIdx++) {
-    if (actedEnemies.has(eIdx)) continue
-
-    // Lê sempre o estado ATUAL do inimigo (não a referência original)
-    const enemy = b.enemyTeam[eIdx]
-    if (enemy.currentHp <= 0) { actedEnemies.add(eIdx); continue }
-    if (enemy.statuses.find(s => s.type === 'stun')) {
-      b.log = [...b.log, `💫 ${enemy.name.split(' ')[0]} está atordoado e não pode agir!`]
-      actedEnemies.add(eIdx)
-      continue
+  // Log inimigos atordoados
+  b.enemyTeam.forEach(e => {
+    if (e.currentHp > 0 && e.statuses.find(s => s.type === 'stun')) {
+      b.log = [...b.log, `💫 ${e.name.split(' ')[0]} está atordoado e não pode agir!`]
     }
+  })
 
-    const alivePlayers = b.playerTeam.filter(f => f.currentHp > 0)
-    if (!alivePlayers.length) break
+  // Coleta candidatos: inimigos vivos e não atordoados, com sua melhor skill
+  const candidates = b.enemyTeam.map((enemy, eIdx) => {
+    if (enemy.currentHp <= 0) return null
+    if (enemy.statuses.find(s => s.type === 'stun')) return null
 
-    // AI escolhe skill baseado em estratégia simples
-    const aiChakra = { nin:5, tai:5, gen:5, blood:4, ran:4 }
     const available = enemy.skills.filter(sk =>
       canAfford(sk, aiChakra) && !(enemy.cooldowns[sk.id] > 0)
     )
 
+    let chosen
     if (!available.length) {
-      const weakest = alivePlayers.reduce((m, p) => p.currentHp < m.currentHp ? p : m, alivePlayers[0])
-      const tIdx = b.playerTeam.indexOf(weakest)
-      b = resolveAction(b, 'enemyTeam', eIdx, BASIC_KUNAI, 'playerTeam', tIdx)
-      actedEnemies.add(eIdx)
-      continue
-    }
-
-    // Prioridade: cura se HP baixo, senão maior dano
-    let chosen = available[0]
-    if (enemy.currentHp < enemy.maxHp * 0.35) {
+      chosen = BASIC_KUNAI
+    } else if (enemy.currentHp < enemy.maxHp * 0.35) {
       const heal = available.find(sk => sk.heal > 0 || sk.effect?.includes('regen') || sk.effect?.includes('shield'))
-      if (heal) chosen = heal
+      chosen = heal || available.reduce((best, sk) => {
+        const dmg = sk.damage + (sk.target === 'all_enemy' || sk.target === 'all_ally' ? 1000 : 0)
+        const bestDmg = best.damage + (best.target === 'all_enemy' || best.target === 'all_ally' ? 1000 : 0)
+        return dmg > bestDmg ? sk : best
+      }, available[0])
     } else {
       chosen = available.reduce((best, sk) => {
-        const isAoE = sk.target === 'all_enemy' || sk.target === 'all_ally'
-        const dmg = sk.damage + (isAoE ? 1000 : 0)
-        const bestIsAoE = best.target === 'all_enemy' || best.target === 'all_ally'
-        const bestDmg = best.damage + (bestIsAoE ? 1000 : 0)
+        const dmg = sk.damage + (sk.target === 'all_enemy' || sk.target === 'all_ally' ? 1000 : 0)
+        const bestDmg = best.damage + (best.target === 'all_enemy' || best.target === 'all_ally' ? 1000 : 0)
         return dmg > bestDmg ? sk : best
       }, available[0])
     }
 
-    // Alvo: mais fraco do time do jogador
-    const weakest = alivePlayers.reduce((m, p) => p.currentHp < m.currentHp ? p : m, alivePlayers[0])
-    const tIdx = b.playerTeam.indexOf(weakest)
+    const score = chosen.damage + (chosen.target === 'all_enemy' || chosen.target === 'all_ally' ? 1000 : 0)
+    return { eIdx, enemy, chosen, score }
+  }).filter(Boolean)
 
-    b = resolveAction(b, 'enemyTeam', eIdx, chosen, 'playerTeam', tIdx)
-    // Atualiza cooldowns no estado corrente (imutável)
-    b = {
-      ...b,
-      enemyTeam: b.enemyTeam.map((e, i) =>
-        i !== eIdx ? e : {
-          ...e,
-          cooldowns: { ...e.cooldowns, ...(chosen.cooldown ? { [chosen.id]: chosen.cooldown } : {}) }
-        }
-      )
-    }
-    actedEnemies.add(eIdx)
+  if (!candidates.length) {
+    b.log = (b.log || []).slice(-60)
+    return b
+  }
+
+  const alivePlayers = b.playerTeam.filter(f => f.currentHp > 0)
+  if (!alivePlayers.length) {
+    b.log = (b.log || []).slice(-60)
+    return b
+  }
+
+  // A IA faz apenas 1 ataque por turno: escolhe o candidato com maior pontuação
+  const { eIdx, chosen } = candidates.reduce((a, c) => c.score > a.score ? c : a, candidates[0])
+
+  const weakest = alivePlayers.reduce((m, p) => p.currentHp < m.currentHp ? p : m, alivePlayers[0])
+  const tIdx = b.playerTeam.indexOf(weakest)
+
+  b = resolveAction(b, 'enemyTeam', eIdx, chosen, 'playerTeam', tIdx)
+  b = {
+    ...b,
+    enemyTeam: b.enemyTeam.map((e, i) =>
+      i !== eIdx ? e : {
+        ...e,
+        cooldowns: { ...e.cooldowns, ...(chosen.cooldown ? { [chosen.id]: chosen.cooldown } : {}) }
+      }
+    )
   }
 
   b.log = (b.log || []).slice(-60)

@@ -199,6 +199,22 @@ export default function MainMenu() {
           </div>
           <span className="nav-arrow">›</span>
         </button>
+
+        <button
+          className="menu-nav-btn"
+          onClick={() => dispatch({ type: 'SET_SCREEN', screen: 'shop' })}
+        >
+          <span className="nav-icon">🏪</span>
+          <div className="nav-texts">
+            <span>Loja</span>
+            <span className="nav-desc">
+              {player.equippedItem
+                ? '✓ Item equipado para a próxima batalha'
+                : `💰 ${(player.ryo || 0).toLocaleString()} Ryō disponíveis`}
+            </span>
+          </div>
+          <span className="nav-arrow">›</span>
+        </button>
       </div>
 
       {/* Version footer */}

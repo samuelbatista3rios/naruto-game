@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import CHARACTERS, { BASIC_KUNAI, SUBSTITUTION } from '../data/characters'
 import MISSIONS, { getRankByPoints } from '../data/missions'
 import { getEnemyTeamsForRank } from '../data/enemyTeams'
+import SHOP_ITEMS from '../data/shopItems'
 
 const GameContext = createContext(null)
 
@@ -318,6 +319,9 @@ function resolveAction(battle, actorTeam, actorIdx, skill, targetTeam, targetIdx
     const bonus = (isPlayer ? attacker.healBonus : 0) || 0
     const actual = Math.min(target.maxHp - target.currentHp, amount + bonus)
     target.currentHp += actual
+    if (actual > 0 && isPlayer) {
+      battle = { ...battle, healDone: (battle.healDone || 0) + actual }
+    }
     return actual
   }
 
@@ -565,6 +569,8 @@ function makeInitialState() {
       unlockedChars: [...STARTER_CHARS],
       completedMissions: [],
       missionProgress: {},
+      shopInventory: {},   // { itemId: quantity }
+      equippedItem: null,  // item equipado para a próxima batalha
     },
     selectedTeam: [],
     battle: null,
@@ -596,12 +602,61 @@ function reducer(state, action) {
       return { ...state, selectedTeam: state.selectedTeam.filter(c => c !== action.id) }
 
     case 'START_BATTLE': {
-      const rankName  = getCurrentRankName(state.player.rankPoints || 0)
-      const enemy     = randomEnemyTeam(rankName)
-      const playerTeam = state.selectedTeam.map(id => makeFighter(id)).filter(Boolean)
-      const chakra     = generateChakra({ nin:2, tai:2, gen:2, blood:1, ran:1 })
+      const rankName = getCurrentRankName(state.player.rankPoints || 0)
+      const enemy    = randomEnemyTeam(rankName)
+      let playerTeam = state.selectedTeam.map(id => makeFighter(id)).filter(Boolean)
+      let chakra     = generateChakra({ nin:2, tai:2, gen:2, blood:1, ran:1 })
+      let updatedPlayer = { ...state.player }
+      let doubleRyo = false
+      const equippedId = state.player.equippedItem
+
+      if (equippedId) {
+        const item = SHOP_ITEMS.find(i => i.id === equippedId)
+        if (item) {
+          // Consome o item do inventário
+          const inv = { ...updatedPlayer.shopInventory }
+          inv[equippedId] = Math.max(0, (inv[equippedId] || 1) - 1)
+          updatedPlayer = { ...updatedPlayer, shopInventory: inv, equippedItem: null }
+
+          switch (item.effect) {
+            case 'extra_chakra':
+              chakra = Object.fromEntries(
+                Object.entries(chakra).map(([k, v]) => [k, Math.min(9, v + 3)])
+              )
+              break
+            case 'power_boost':
+              playerTeam = playerTeam.map(f => ({ ...f, dmgBonus: (f.dmgBonus || 0) + 25 }))
+              break
+            case 'start_shield':
+              playerTeam = playerTeam.map(f => ({
+                ...f,
+                statuses: [...f.statuses, { type:'shield', name:'Armadura', duration:99, power:50 }],
+              }))
+              break
+            case 'smoke_bomb':
+              playerTeam = playerTeam.map(f => ({
+                ...f,
+                statuses: [...f.statuses, { type:'invul', name:'Fumaça', duration:1 }],
+              }))
+              break
+            case 'extra_stamina':
+              playerTeam = playerTeam.map(f => ({
+                ...f,
+                maxStamina: (f.maxStamina || 100) + 50,
+                currentStamina: (f.currentStamina || 100) + 50,
+              }))
+              break
+            case 'double_ryo':
+              doubleRyo = true
+              break
+            default: break
+          }
+        }
+      }
+
       return {
         ...state,
+        player: updatedPlayer,
         screen: 'battle',
         battle: {
           playerTeam,
@@ -609,16 +664,18 @@ function reducer(state, action) {
           enemyTeamName: enemy.teamName,
           chakra,
           turn: 1,
-          phase: 'player',          // 'player' | 'ai' | 'end'
-          selectedCharIdx: null,    // índice do personagem selecionado
-          pendingSkill: null,       // skill aguardando alvo
-          targetMode: false,        // aguardando clique de alvo
-          targetType: null,         // 'enemy' | 'ally'
-          actedThisTurn: [],        // índices dos personagens que já agiram neste turno
+          phase: 'player',
+          selectedCharIdx: null,
+          pendingSkill: null,
+          targetMode: false,
+          targetType: null,
+          actedThisTurn: [],
           log: [`⚔ Batalha vs ${enemy.teamName} — Lute!`],
           winner: null,
           damageDealt: 0,
+          healDone: 0,
           allAlive: true,
+          doubleRyo,
         },
       }
     }
@@ -714,6 +771,14 @@ function reducer(state, action) {
         if (charIdx !== undefined) {
           const cid = b.playerTeam[charIdx]?.id
           if (cid) progress[`deal_damage_with_char_${cid}`] = (progress[`deal_damage_with_char_${cid}`] || 0) + dmg
+        }
+      }
+      const heal = (tmpBattle.healDone || 0) - (b.healDone || 0)
+      if (heal > 0) {
+        progress.heal_hp = (progress.heal_hp || 0) + heal
+        if (charIdx !== undefined) {
+          const cid = b.playerTeam[charIdx]?.id
+          if (cid) progress[`heal_with_char_${cid}`] = (progress[`heal_with_char_${cid}`] || 0) + heal
         }
       }
       progress.use_skill = (progress.use_skill || 0) + 1
@@ -819,7 +884,8 @@ function reducer(state, action) {
       const p   = { ...state.player }
       const progress = { ...p.missionProgress }
 
-      const ryoGain = win ? 100 + Math.floor(Math.random() * 150) + b.turn * 5 : 15
+      const baseRyo = win ? 100 + Math.floor(Math.random() * 150) + b.turn * 5 : 15
+      const ryoGain = (win && b.doubleRyo) ? baseRyo * 2 : baseRyo
       p.wins        = (p.wins || 0) + (win ? 1 : 0)
       p.losses      = (p.losses || 0) + (win ? 0 : 1)
       p.streak      = win ? (p.streak || 0) + 1 : 0
@@ -878,6 +944,26 @@ function reducer(state, action) {
         p.unlockedChars = [...p.unlockedChars, mission.unlockChar]
       }
       return { ...state, player: p }
+    }
+
+    case 'BUY_ITEM': {
+      const item = SHOP_ITEMS.find(i => i.id === action.itemId)
+      if (!item || (state.player.ryo || 0) < item.cost) return state
+      const inv = { ...state.player.shopInventory }
+      inv[item.id] = (inv[item.id] || 0) + 1
+      return {
+        ...state,
+        player: { ...state.player, ryo: state.player.ryo - item.cost, shopInventory: inv },
+      }
+    }
+
+    case 'EQUIP_ITEM': {
+      const { itemId } = action
+      if (!itemId) return { ...state, player: { ...state.player, equippedItem: null } }
+      const inv = state.player.shopInventory || {}
+      if (!inv[itemId] || inv[itemId] <= 0) return state
+      const newEquipped = state.player.equippedItem === itemId ? null : itemId
+      return { ...state, player: { ...state.player, equippedItem: newEquipped } }
     }
 
     case 'CANCEL_TARGET':

@@ -54,10 +54,10 @@ function randomEnemyTeam(rankName) {
   }
 }
 
-function generateChakra(current) {
+function generateChakra(current, count = CHAKRA_REGEN_PER_TURN) {
   const types  = ['nin','tai','gen','blood','ran']
   const result = { ...current }
-  for (let i = 0; i < CHAKRA_REGEN_PER_TURN; i++) {
+  for (let i = 0; i < count; i++) {
     const t = types[Math.floor(Math.random() * types.length)]
     result[t] = Math.min(MAX_CHAKRA_PER_TYPE, (result[t] || 0) + 1)
   }
@@ -605,7 +605,7 @@ function reducer(state, action) {
       const rankName = getCurrentRankName(state.player.rankPoints || 0)
       const enemy    = randomEnemyTeam(rankName)
       let playerTeam = state.selectedTeam.map(id => makeFighter(id)).filter(Boolean)
-      let chakra     = generateChakra({ nin:2, tai:2, gen:2, blood:1, ran:1 })
+      let chakra     = { nin:1, tai:1, gen:1, blood:1, ran:1 }
       let updatedPlayer = { ...state.player }
       let doubleRyo = false
       const equippedId = state.player.equippedItem
@@ -814,10 +814,11 @@ function reducer(state, action) {
         return { ...state, battle: { ...b, playerTeam: pTeam, enemyTeam: eTeam, phase: 'end', winner } }
       }
 
-      // Gerar chakra
-      const chakra = generateChakra(b.chakra)
+      // Gerar chakra — regen cresce 1 por turno até o máximo (5)
+      const regenCount = Math.min(b.turn, CHAKRA_REGEN_PER_TURN)
+      const chakra = generateChakra(b.chakra, regenCount)
       const newTurn = b.turn + 1
-      const log = [...b.log, `⚔ Turno ${newTurn} — Chakra gerado!`]
+      const log = [...b.log, `⚔ Turno ${newTurn} — +${regenCount} chakra gerado!`]
 
       // IA age
       let aiState = {

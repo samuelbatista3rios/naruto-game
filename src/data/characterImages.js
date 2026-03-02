@@ -103,6 +103,7 @@ export const SKILL_IMAGES = {
 
   // ── NARUTO CLÁSSICO (nc1-nc4) ────────────────────────────
   nc1:  `${W}/4/40/Shadow_Clone_Technique.png`,   // Kage Bunshin
+  nc2:  `${W}/d/d6/Naruto_Part_I.png`,            // Combo Uzumaki
   nc3:  `${W}/0/0a/Rasengan_Naruto.png`,          // Rasengan
   nc4:  `${W}/d/d6/Naruto_Part_I.png`,            // Chakra da Kyuubi
 
@@ -120,24 +121,31 @@ export const SKILL_IMAGES = {
 
   // ── SASUKE CLÁSSICO (sc1-sc4) ────────────────────────────
   sc1:  `${W}/9/9f/Great_Fireball_Technique.png`, // Katon: Fireball
+  sc2:  `${W}/2/21/Sasuke_Part_1.png`,            // Sharingan Genjutsu
   sc3:  `${W}/b/ba/Chidori.png`,                  // Chidori
   sc4:  `${W}/7/7a/Curse_Mark_of_Heaven.png`,     // Marca da Maldição
 
-  // ── SASUKE SHIPPUDEN (ss1-ss4) ───────────────────────────
-  ss1:  `${W}/1/13/Sasuke_Part_2.png`,            // Kirin
-  ss3:  `${W}/a/a3/Amaterasu.png`,                // Amaterasu de Sasuke
-  ss4:  `${W}/1/13/Sasuke_Part_2.png`,            // Susanoo Completo
+  // ── SASUKE SHIPPUDEN / SASORI (ss1-ss4) ─────────────────
+  ss1:  `${W}/1/13/Sasuke_Part_2.png`,            // Kirin / Veneno do Hiruko
+  ss2:  `${W}/1/13/Sasuke_Part_2.png`,            // Chidori Nagashi / Ataque de Marionetes
+  ss3:  `${W}/a/a3/Amaterasu.png`,                // Amaterasu de Sasuke / 100 Marionetes
+  ss4:  `${W}/1/13/Sasuke_Part_2.png`,            // Susanoo Completo / Marionete Definitiva
 
   // ── SAKURA CLÁSSICO (sac1-sac4) ──────────────────────────
+  sac1: `${W}/6/64/Sakura_Part_1.png`,            // Cura Médica
+  sac2: `${W}/6/64/Sakura_Part_1.png`,            // Veneno Médico
   sac3: `${W}/6/64/Sakura_Part_1.png`,            // Soco Monstruoso
   sac4: `${W}/6/64/Sakura_Part_1.png`,            // Selo Byakugo
 
   // ── SAKURA SHIPPUDEN (sas1-sas4) ─────────────────────────
   sas1: `${W}/b/ba/Sakurap2.png`,                 // Cura Shippuden
   sas2: `${W}/b/ba/Sakurap2.png`,                 // Soco de Titã
+  sas3: `${W}/b/ba/Sakurap2.png`,                 // Bisturi Letal
   sas4: `${W}/b/ba/Sakurap2.png`,                 // Determinação de Sakura
 
   // ── KAKASHI CLÁSSICO (kac1-kac4) ─────────────────────────
+  kac1: `${W}/2/27/Kakashi_Hatake.png`,           // Presa Branca
+  kac2: `${W}/2/27/Kakashi_Hatake.png`,           // Sharingan: Copiar
   kac3: `${W}/b/ba/Chidori.png`,                  // Raikiri
   kac4: `${W}/6/67/Kamui.png`,                    // Kamui
 
@@ -148,20 +156,25 @@ export const SKILL_IMAGES = {
   ks4:  `${W}/2/25/Kakashi_Part_III.png`,         // Susanoo Incompleto
 
   // ── ROCK LEE (rl1-rl4) ───────────────────────────────────
+  rl1:  `${W}/9/97/Rock_Lee_Part_I.png`,          // Soltar Pesos
+  rl2:  `${W}/9/97/Rock_Lee_Part_I.png`,          // Lotus Primário
   rl3:  `${W}/9/97/Rock_Lee_Part_I.png`,          // Oito Portões Internos
   rl4:  `${W}/d/d9/Night_Guy.png`,                // Lotus Inverso — Portão da Morte
 
   // ── NEJI (nj1-nj4) ───────────────────────────────────────
+  nj1:  `${W}/7/7e/Neji_Part_I.png`,              // Punho Gentil
   nj2:  `${W}/7/7e/Neji_Part_I.png`,              // Byakugan Ativo
   nj3:  `${W}/7/7e/Neji_Part_I.png`,              // 8 Trigramas: Rotação
   nj4:  `${W}/7/7e/Neji_Part_I.png`,              // 8 Trigramas: 64 Palmas
 
   // ── TENTEN (tt1-tt4) ─────────────────────────────────────
+  tt1:  `${W}/d/da/Tenten_Part_1.png`,            // Lança de Sousa
   tt2:  `${W}/d/da/Tenten_Part_1.png`,            // Rolagem de Armamentos
   tt3:  `${W}/d/da/Tenten_Part_1.png`,            // Gêmeos Criando o Caos
   tt4:  `${W}/d/da/Tenten_Part_1.png`,            // Barreira de Armas
 
   // ── HINATA (hh1-hh4) ─────────────────────────────────────
+  hh1:  `${W}/9/97/Hinata.png`,                   // Passos Gentis Duplos
   hh2:  `${W}/9/97/Hinata.png`,                   // Dupla Palma Giratória
   hh3:  `${W}/9/97/Hinata.png`,                   // Cura de Chakra
   hh4:  `${W}/9/97/Hinata.png`,                   // 8 Trigramas: 128 Palmas
@@ -179,26 +192,31 @@ export const SKILL_IMAGES = {
   sn4:  `${W}/9/9c/Shino.png`,                    // Invasão de Besouros
 
   // ── SHIKAMARU (sh1-sh4) ──────────────────────────────────
+  sh1:  `${W}/4/44/Shikamaru_Part_I.png`,         // Análise Tática
   sh2:  `${W}/4/44/Shikamaru_Part_I.png`,         // Sombra Expansão
   sh3:  `${W}/4/44/Shikamaru_Part_I.png`,         // Possessão da Sombra
   sh4:  `${W}/4/44/Shikamaru_Part_I.png`,         // Costura da Sombra
 
-  // ── CHOJI (cho1-cho4) ────────────────────────────────────
-  cho2: `${W}/7/7d/Ch%C5%8Dji_Akimichi.png`,      // Expansão Parcial
-  cho3: `${W}/7/7d/Ch%C5%8Dji_Akimichi.png`,      // Rolo de Colosso
-  cho4: `${W}/7/7d/Ch%C5%8Dji_Akimichi.png`,      // Borboleta de Chakra
+  // ── CHOJI (cj1 prefix reused — portrait fix handled below) ──
+  cho1: `${W}/1/18/Chojuro.png`,                   // Golpe Hiramekarei (Chojuro)
+  cho2: `${W}/1/18/Chojuro.png`,                   // Onda de Chakra (Chojuro)
+  cho3: `${W}/1/18/Chojuro.png`,                   // Escudo Hiramekarei (Chojuro)
+  cho4: `${W}/1/18/Chojuro.png`,                   // Descarga Total (Chojuro)
 
   // ── INO (in1-in4) ────────────────────────────────────────
+  in1:  `${W}/d/dd/Ino.png`,                      // Grito Disruptivo
   in2:  `${W}/d/dd/Ino.png`,                      // Transferência de Mente
   in3:  `${W}/d/dd/Ino.png`,                      // Troca de Mente
   in4:  `${W}/d/dd/Ino.png`,                      // Bloqueio Mental
 
   // ── GAARA (ga1-ga4) ──────────────────────────────────────
+  ga1:  `${W}/2/20/Gaara_in_Part_I.png`,          // Escudo de Areia
   ga2:  `${W}/2/20/Gaara_in_Part_I.png`,          // Areia de Defesa
   ga3:  `${W}/2/20/Gaara_in_Part_I.png`,          // Caixão de Areia
   ga4:  `${W}/7/7c/Sand_Burial.png`,              // Enterro de Areia
 
   // ── TEMARI (tm1-tm4) ─────────────────────────────────────
+  tm1:  `${W}/b/bb/Temari_newshot.png`,            // Esmagamento de Vento
   tm2:  `${W}/b/bb/Temari_newshot.png`,            // Corte de Vento
   tm3:  `${W}/b/bb/Temari_newshot.png`,            // Vento Grande
   tm4:  `${W}/b/bb/Temari_newshot.png`,            // Fujin
@@ -210,11 +228,13 @@ export const SKILL_IMAGES = {
   kk4:  `${W}/7/7d/Kankur%C5%8D1.png`,            // Tri-Marionete
 
   // ── KURENAI (kur1-kur4) ──────────────────────────────────
+  kur1: `${W}/6/67/Kurenai_Part_I.png`,           // Lama Ácida
   kur2: `${W}/6/67/Kurenai_Part_I.png`,           // Ilusão de Espinhos
   kur3: `${W}/6/67/Kurenai_Part_I.png`,           // Mundo das Flores
   kur4: `${W}/6/67/Kurenai_Part_I.png`,           // Ilusão Profunda
 
   // ── GUY (gy1-gy4) ────────────────────────────────────────
+  gy1:  `${W}/3/31/Might_Guy.png`,                // Postura do Tigre
   gy2:  `${W}/3/31/Might_Guy.png`,                // Lotus Dançarino
   gy3:  `${W}/3/31/Might_Guy.png`,                // Socos de Velocidade
   gy4:  `${W}/3/31/Might_Guy.png`,                // 7° Portão
@@ -226,6 +246,7 @@ export const SKILL_IMAGES = {
   as4:  `${W}/7/7c/Asuma.png`,                    // Fumaça Disruptiva
 
   // ── JIRAIYA (jr1-jr4) ────────────────────────────────────
+  jr1:  `${W}/2/21/Profile_Jiraiya.png`,          // Armadilha de Cabelo
   jr2:  `${W}/2/21/Profile_Jiraiya.png`,          // Tempestade de Sapos
   jr3:  `${W}/2/21/Profile_Jiraiya.png`,          // Rasengan Gigante
   jr4:  `${W}/2/21/Profile_Jiraiya.png`,          // Modo Sábio
@@ -237,6 +258,7 @@ export const SKILL_IMAGES = {
   ts4:  `${W}/b/b3/Tsunade_infobox2.png`,         // Piso Partido
 
   // ── OROCHIMARU (or1-or4) ─────────────────────────────────
+  or1:  `${W}/1/14/Orochimaru_Infobox.png`,       // Espada de Kusanagi
   or2:  `${W}/1/14/Orochimaru_Infobox.png`,       // Troca de Pele
   or3:  `${W}/1/14/Orochimaru_Infobox.png`,       // Marca da Maldição
   or4:  `${W}/1/14/Orochimaru_Infobox.png`,       // Grande Evocação de Cobras
@@ -451,11 +473,11 @@ export const SKILL_IMAGES = {
   ame3: `${W}/4/4b/Ameyuri_Ringo.png`,            // Tempestade de Raios
   ame4: `${W}/4/4b/Ameyuri_Ringo.png`,            // Descarga Total
 
-  // ── CHOJURO (cj1-cj4) ────────────────────────────────────
-  cj1:  `${W}/1/18/Chojuro.png`,                  // Martelo de Hiramekarei
-  cj2:  `${W}/1/18/Chojuro.png`,                  // Espada Dupla
-  cj3:  `${W}/1/18/Chojuro.png`,                  // Hiramekarei
-  cj4:  `${W}/1/18/Chojuro.png`,                  // Golpe Duplo Final
+  // ── CHOJI (cj1-cj4) ──────────────────────────────────────
+  cj1:  `${W}/7/7d/Ch%C5%8Dji_Akimichi.png`,      // Expansão Parcial (Choji)
+  cj2:  `${W}/7/7d/Ch%C5%8Dji_Akimichi.png`,      // Rolagem Humana (Choji)
+  cj3:  `${W}/7/7d/Ch%C5%8Dji_Akimichi.png`,      // Pastilhas Akimichi (Choji)
+  cj4:  `${W}/7/7d/Ch%C5%8Dji_Akimichi.png`,      // Expansão Total (Choji)
 
   // ── YUGITO (yug1-yug4) ───────────────────────────────────
   yug1: `${W}/5/5e/Yugito_Ni%C4%AB.png`,          // Chama do Nibi

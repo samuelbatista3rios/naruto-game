@@ -14,7 +14,7 @@ const STARTER_CHARS = [
   'rock_lee','neji','shikamaru','gaara','hinata',
 ]
 
-const CHAKRA_REGEN_PER_TURN = 5   // nº de chakras gerados por turno
+const CHAKRA_REGEN_PER_TURN = 8   // nº de chakras gerados por turno
 const MAX_CHAKRA_PER_TYPE   = 9   // máximo por tipo
 
 // ────────────────────────────────────────────────────────────
@@ -224,7 +224,14 @@ function applyEffect(effect, attacker, target, allAttackers, allDefenders) {
           f.statuses = f.statuses.filter(s => s.type !== 'revive')
         }
       })
-      attacker.currentHp = 0  // Nagato morre ao usar
+      // Se Nagato estiver com mais de 50% do HP máximo, ele sobrevive
+      // com 1 HP (exausto mas vivo). Caso contrário morre como no anime.
+      if (attacker.currentHp > Math.floor(attacker.maxHp * 0.5)) {
+        attacker.currentHp = 1
+        addStatus(attacker, { type:'debuff', name:'Exausto', duration:99 })
+      } else {
+        attacker.currentHp = 0
+      }
       break
     case 'revive':
       addStatus(target, { type:'revive', name:'Reviver', duration:99 }); break
@@ -605,7 +612,7 @@ function reducer(state, action) {
       const rankName = getCurrentRankName(state.player.rankPoints || 0)
       const enemy    = randomEnemyTeam(rankName)
       let playerTeam = state.selectedTeam.map(id => makeFighter(id)).filter(Boolean)
-      let chakra     = { nin:1, tai:1, gen:1, blood:1, ran:1 }
+      let chakra     = generateChakra({}, 12)
       let updatedPlayer = { ...state.player }
       let doubleRyo = false
       const equippedId = state.player.equippedItem
@@ -814,8 +821,8 @@ function reducer(state, action) {
         return { ...state, battle: { ...b, playerTeam: pTeam, enemyTeam: eTeam, phase: 'end', winner } }
       }
 
-      // Gerar chakra — regen cresce 1 por turno até o máximo (5)
-      const regenCount = Math.min(b.turn, CHAKRA_REGEN_PER_TURN)
+      // Gerar chakra — regen começa em 5 e cresce até o máximo
+      const regenCount = Math.min(b.turn + 4, CHAKRA_REGEN_PER_TURN)
       const chakra = generateChakra(b.chakra, regenCount)
       const newTurn = b.turn + 1
       const log = [...b.log, `⚔ Turno ${newTurn} — +${regenCount} chakra gerado!`]

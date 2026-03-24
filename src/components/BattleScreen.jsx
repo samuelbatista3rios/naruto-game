@@ -2,56 +2,81 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useGame } from '../context/GameContext'
 import { BASIC_KUNAI, SUBSTITUTION } from '../data/characters'
 import CharAvatar, { SkillIcon } from './CharAvatar'
+import BattleArena3D from './BattleArena3D'
 
 // ─────────────────────────────────────────────────────────────
-//  Chakra type metadata
+//  Constants
 // ─────────────────────────────────────────────────────────────
 const CHAKRA_META = [
-  { key: 'nin',   label: 'Nin',  color: '#ff4400' },
-  { key: 'tai',   label: 'Tai',  color: '#0088ff' },
-  { key: 'gen',   label: 'Gen',  color: '#aa44ff' },
-  { key: 'blood', label: 'Kek',  color: '#cc0022' },
-  { key: 'ran',   label: 'Ran',  color: '#888888' },
+  { key: 'nin',   label: 'NIN',  color: '#ff4400' },
+  { key: 'tai',   label: 'TAI',  color: '#0088ff' },
+  { key: 'gen',   label: 'GEN',  color: '#aa44ff' },
+  { key: 'blood', label: 'KEK',  color: '#cc0022' },
+  { key: 'ran',   label: 'RAN',  color: '#888888' },
 ]
 
-// Can the player afford this skill? (chakra)
+// ─────────────────────────────────────────────────────────────
+//  Helpers
+// ─────────────────────────────────────────────────────────────
 function canAfford(skill, chakra) {
   if (skill.isBasic || skill.isSubstitution) return true
   return Object.entries(skill.cost || {}).every(([t, n]) => (chakra[t] || 0) >= n)
 }
-
-// Verifica estamina para kunai/substituição
 function canAffordStamina(skill, fighter) {
   if (!skill.isBasic && !skill.isSubstitution) return true
   return (fighter?.currentStamina || 0) >= (skill.staminaCost || 0)
 }
-
-// HP percentage color
-function hpClass(current, max) {
-  const p = current / max
-  if (p > 0.5) return ''
-  if (p > 0.25) return 'medium'
-  return 'low'
+function hpGradient(pct) {
+  if (pct > 55) return 'linear-gradient(90deg,#1a7a33,#33cc55)'
+  if (pct > 25) return 'linear-gradient(90deg,#886600,#ddaa00)'
+  return 'linear-gradient(90deg,#881100,#dd3300)'
+}
+function stColor(pct) {
+  if (pct > 50) return '#22aaff'
+  if (pct > 20) return '#ff9900'
+  return '#cc2222'
+}
+function logClass(line = '') {
+  const l = line.toLowerCase()
+  if (l.includes('vitória') || l.includes('venceu')) return 'log-win'
+  if (l.includes('derrota') || l.includes('derrotado') || l.includes('caiu')) return 'log-die'
+  if (l.includes('turno') && (l.includes('início') || l.includes('fase'))) return 'log-turn'
+  if (l.includes('cura') || l.includes('recupera') || (l.includes('+') && l.includes('hp'))) return 'log-heal'
+  if (l.includes('recebe') && /\d/.test(l)) return 'log-dmg'
+  if (l.includes('atordoa') || l.includes('queima') || l.includes('sangra') || l.includes('status')) return 'log-status'
+  if (l.includes('chakra') || l.includes('nin') || l.includes('tai') || l.includes('gen')) return 'log-chakra'
+  if (l.includes('usa') || l.includes('ativa') || l.includes('lança')) return 'log-action'
+  if (l.includes('escudo') || l.includes('invulner') || l.includes('proteg')) return 'log-shield'
+  return ''
 }
 
 // ─────────────────────────────────────────────────────────────
-//  ChakraDisplay
+//  ChakraDisplay — row of typed orbs
 // ─────────────────────────────────────────────────────────────
 function ChakraDisplay({ chakra }) {
   return (
-    <div className="chakra-display">
+    <div className="na-chakra-display">
       {CHAKRA_META.map(t => {
         const count = chakra[t.key] || 0
         return (
-          <div key={t.key} className="chakra-type">
-            <div className="chakra-label" style={{ color: t.color }}>{t.label}</div>
-            <div className="chakra-orbs">
+          <div key={t.key} className="na-chakra-type">
+            <span className="na-chakra-label" style={{ color: t.color }}>{t.label}</span>
+            <div className="na-chakra-orbs">
               {Array.from({ length: 9 }, (_, i) => (
-                <div key={i} className="chakra-orb"
-                  style={{ background: i < count ? t.color : '#1e1e2e', opacity: i < count ? 1 : 0.3 }} />
+                <div
+                  key={i}
+                  className="na-chakra-orb"
+                  style={{
+                    background: i < count ? t.color : 'rgba(20,20,30,0.8)',
+                    boxShadow: i < count ? `0 0 5px ${t.color}88` : 'none',
+                    opacity: i < count ? 1 : 0.25,
+                  }}
+                />
               ))}
             </div>
-            <div className="chakra-count" style={{ color: count > 0 ? t.color : '#444' }}>{count}</div>
+            <span className="na-chakra-count" style={{ color: count > 0 ? t.color : '#444' }}>
+              {count}
+            </span>
           </div>
         )
       })}
@@ -62,22 +87,15 @@ function ChakraDisplay({ chakra }) {
 // ─────────────────────────────────────────────────────────────
 //  StatusBadges
 // ─────────────────────────────────────────────────────────────
-const STATUS_CSS = {
-  stun: 's-stun', burn: 's-burn', bleed: 's-bleed', shield: 's-shield',
-  invul: 's-invul', regen: 's-regen', boost: 's-boost', debuff: 's-debuff',
-  revive: 's-revive', jashin: 's-jashin', gates_backlash: 's-burn',
-}
-const STATUS_ICONS = {
-  stun: '💫', burn: '🔥', bleed: '🩸', shield: '🛡', invul: '💨', regen: '💚',
-  boost: '⬆', debuff: '⬇', revive: '☯', jashin: '☠', gates_backlash: '⚡',
-}
+const STATUS_CSS   = { stun:'s-stun', burn:'s-burn', bleed:'s-bleed', shield:'s-shield', invul:'s-invul', regen:'s-regen', boost:'s-boost', debuff:'s-debuff', revive:'s-revive', jashin:'s-jashin', gates_backlash:'s-burn' }
+const STATUS_ICONS = { stun:'💫', burn:'🔥', bleed:'🩸', shield:'🛡', invul:'💨', regen:'💚', boost:'⬆', debuff:'⬇', revive:'☯', jashin:'☠', gates_backlash:'⚡' }
 function StatusBadges({ statuses }) {
   if (!statuses?.length) return null
   return (
     <div className="fighter-statuses">
       {statuses.slice(0, 4).map((s, i) => (
         <span key={i} className={`status-badge ${STATUS_CSS[s.type] || 's-other'}`}>
-          {STATUS_ICONS[s.type] || '?'} {s.duration < 99 ? s.duration : ''}
+          {STATUS_ICONS[s.type] || '?'}{s.duration < 99 ? s.duration : ''}
         </span>
       ))}
     </div>
@@ -85,19 +103,77 @@ function StatusBadges({ statuses }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  SkillCostPips
+//  FighterRow — horizontal Naruto Arena style card
 // ─────────────────────────────────────────────────────────────
+function FighterRow({ fighter, isActive, isTarget, isAllyTarget, isDead, hasActed, isStunned, showStamina, animClass, onClick }) {
+  const pct  = Math.max(0, (fighter.currentHp / fighter.maxHp) * 100)
+  const stPct= Math.max(0, ((fighter.currentStamina||0) / (fighter.maxStamina||100)) * 100)
+
+  let cls = 'nfr'
+  if (isDead)          cls += ' nfr-dead'
+  else if (hasActed)   cls += ' nfr-acted'
+  else if (isActive)   cls += ' nfr-active'
+  else if (isTarget)   cls += ' nfr-target'
+  else if (isAllyTarget) cls += ' nfr-ally'
+
+  return (
+    <div
+      className={`${cls}${animClass ? ` ${animClass}` : ''}`}
+      style={{ '--char-color': fighter.color || '#ff8c00' }}
+      onClick={!isDead ? onClick : undefined}
+    >
+      {/* Portrait */}
+      <div className="nfr-portrait">
+        <CharAvatar char={fighter} size="lg" shape="square" isDead={isDead || hasActed} />
+        {hasActed && !isDead && <div className="nfr-badge nfr-acted-badge">✓</div>}
+        {isStunned && !isDead && !hasActed && <div className="nfr-badge nfr-stun-badge">💫</div>}
+      </div>
+
+      {/* Info */}
+      <div className="nfr-info">
+        <div className="nfr-name" style={{ color: isDead ? '#444' : hasActed ? '#555' : undefined }}>
+          {fighter.name.split(' ').slice(0, 2).join(' ')}
+        </div>
+
+        {!isDead && (
+          <>
+            <div className="nfr-hp-row">
+              <div className="nfr-hp-bar">
+                <div className="nfr-hp-fill" style={{ width: `${pct}%`, background: hpGradient(pct) }} />
+              </div>
+              <span className="nfr-hp-text">{fighter.currentHp}/{fighter.maxHp}</span>
+            </div>
+
+            {showStamina && (
+              <div className="nfr-st-row">
+                <div className="nfr-st-bar">
+                  <div className="nfr-st-fill" style={{ width: `${stPct}%`, background: stColor(stPct) }} />
+                </div>
+                <span className="nfr-st-text">ST {fighter.currentStamina||0}</span>
+              </div>
+            )}
+
+            <StatusBadges statuses={fighter.statuses} />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+//  SkillButton — compact, 2-col grid style
+// ─────────────────────────────────────────────────────────────
+const CHAKRA_COLORS = { nin:'#ff4400', tai:'#0088ff', gen:'#aa44ff', blood:'#cc0022', ran:'#888888' }
+
 function CostPips({ cost }) {
   const pips = []
-  const colors = { nin: '#ff4400', tai: '#0088ff', gen: '#aa44ff', blood: '#cc0022', ran: '#888888' }
-  Object.entries(cost || {}).forEach(([t, n]) => {
-    for (let i = 0; i < n; i++) pips.push(t)
-  })
-  if (!pips.length) return <span style={{ fontSize: '0.62rem', color: '#666' }}>Grátis</span>
+  Object.entries(cost || {}).forEach(([t, n]) => { for (let i=0;i<n;i++) pips.push(t) })
+  if (!pips.length) return <span className="na-free-tag">Livre</span>
   return (
-    <div className="skill-cost">
+    <div className="na-cost-pips">
       {pips.map((t, i) => (
-        <div key={i} className="cost-pip" style={{ background: colors[t] || '#888' }}>
+        <div key={i} className="na-pip" style={{ background: CHAKRA_COLORS[t] || '#888' }}>
           {t[0].toUpperCase()}
         </div>
       ))}
@@ -105,130 +181,55 @@ function CostPips({ cost }) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────
-//  FighterCard
-// ─────────────────────────────────────────────────────────────
-function FighterCard({ fighter, isActive, isTarget, isAllyTarget, isDead, isIdle, hasActed, isStunned, showStamina, animClass, onClick }) {
-  const pct    = Math.max(0, (fighter.currentHp / fighter.maxHp) * 100)
-  const barCls = hpClass(fighter.currentHp, fighter.maxHp)
-  const stPct  = Math.max(0, ((fighter.currentStamina || 0) / (fighter.maxStamina || 100)) * 100)
+function SkillButton({ skill, fighter, chakra, onClick }) {
+  const affordable   = canAfford(skill, chakra)
+  const staminaOk    = canAffordStamina(skill, fighter)
+  const onCooldown   = !skill.isBasic && !skill.isSubstitution && (fighter.cooldowns?.[skill.id] > 0)
+  const substUsed    = skill.isSubstitution && fighter.substUsed
+  const disabled     = !affordable || !staminaOk || onCooldown || substUsed
 
-  let cls = 'fighter-card'
-  if (isDead)          cls += ' dead'
-  else if (hasActed)   cls += ' acted'
-  else if (isActive)   cls += ' active-f'
-  else if (isTarget)   cls += ' target-f'
-  else if (isAllyTarget) cls += ' ally-f'
-  else if (isIdle)     cls += ' idle'
+  let extra = ''
+  if (skill.isBasic)        extra = ' sk-basic'
+  if (skill.isSubstitution) extra = ` sk-subst${substUsed ? ' sk-used' : ''}`
 
   return (
-    <div className={`${cls}${animClass ? ` ${animClass}` : ''}`}
-      style={{
-        background: isDead
-          ? '#0a0a0a'
-          : hasActed
-          ? `linear-gradient(160deg, #1a1a2a 0%, #0d1117 60%)`
-          : `linear-gradient(160deg, ${fighter.color}18 0%, #0d1117 60%)`,
-        borderColor: isActive ? fighter.color : hasActed ? '#333' : undefined,
-      }}
-      onClick={!isDead ? onClick : undefined}>
-
-      {/* Acted / Stun overlay badge */}
-      {hasActed && !isDead && (
-        <div className="fighter-acted-badge">✓ Agiu</div>
-      )}
-      {isStunned && !isDead && !hasActed && (
-        <div className="fighter-stun-badge">💫 Preso</div>
+    <button
+      className={`na-skill-btn${extra}`}
+      disabled={disabled}
+      onClick={() => !disabled && onClick(skill)}
+      title={skill.desc}
+    >
+      {/* Cooldown overlay */}
+      {(onCooldown || substUsed) && (
+        <div className="na-sk-overlay">
+          {onCooldown ? `⏳${fighter.cooldowns[skill.id]}t` : '✕'}
+        </div>
       )}
 
-      {/* Avatar */}
-      <div className="fighter-emoji">
-        <CharAvatar char={fighter} size="md" shape="circle" isDead={isDead || hasActed} />
+      {/* Icon row */}
+      <div className="na-sk-icon">
+        <SkillIcon skill={skill} size={26} />
       </div>
 
       {/* Name */}
-      <div className="fighter-name" style={{ color: isDead ? '#444' : hasActed ? '#555' : undefined }}>
-        {fighter.name.split(' ')[0]}
-      </div>
+      <div className="na-sk-name">{skill.name}</div>
 
-      {/* HP */}
-      {!isDead && (
-        <>
-          <div className="fighter-hp-row" style={{ color: hasActed ? '#555' : undefined }}>
-            {fighter.currentHp}/{fighter.maxHp}
-          </div>
-          <div className="hp-bar-wrap" style={{ width: '90%' }}>
-            <div className={`hp-bar ${barCls}`} style={{ width: `${pct}%`, opacity: hasActed ? 0.4 : 1 }} />
-          </div>
-          {/* Stamina bar — apenas para o time do jogador */}
-          {showStamina && (
-            <div style={{ width: '90%', marginTop: 2 }}>
-              <div style={{
-                width: '100%', height: 4, background: '#111', borderRadius: 2, overflow: 'hidden',
-              }}>
-                <div style={{
-                  width: `${stPct}%`, height: '100%',
-                  background: stPct > 50 ? '#22aaff' : stPct > 20 ? '#ff9900' : '#cc2222',
-                  transition: 'width 0.3s',
-                }} />
-              </div>
-              <div style={{ fontSize: '0.45rem', color: '#4499cc', textAlign: 'center', marginTop: 1 }}>
-                ST {fighter.currentStamina || 0}/{fighter.maxStamina || 100}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Statuses */}
-      <StatusBadges statuses={fighter.statuses} />
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────
-//  SkillButton
-// ─────────────────────────────────────────────────────────────
-function SkillButton({ skill, fighter, chakra, onClick }) {
-  const affordable    = canAfford(skill, chakra)
-  const staminaOk     = canAffordStamina(skill, fighter)
-  const onCooldown    = !skill.isBasic && !skill.isSubstitution && (fighter.cooldowns?.[skill.id] > 0)
-  const substUsed     = skill.isSubstitution && fighter.substUsed
-  const disabled      = !affordable || !staminaOk || onCooldown || substUsed
-
-  let extraCls = ''
-  if (skill.isBasic)        extraCls = ' basic'
-  if (skill.isSubstitution) extraCls = ` subst${substUsed ? ' used' : ''}`
-
-  return (
-    <button className={`skill-btn${extraCls}`} disabled={disabled} onClick={() => !disabled && onClick(skill)}>
-      <div className="skill-btn-header">
-        <SkillIcon skill={skill} size={20} />
-        <span className="skill-btn-name">{skill.name}</span>
-        {onCooldown && (
-          <span className="skill-cd-badge">⏳{fighter.cooldowns[skill.id]}t</span>
-        )}
-        {substUsed && (
-          <span className="skill-cd-badge" style={{ color: '#888' }}>Usada</span>
-        )}
-      </div>
-      <div className="skill-btn-desc">{skill.desc}</div>
-      <div className="skill-btn-meta">
-        {skill.damage > 0 && <span className="skill-dmg">⚔ {skill.damage}</span>}
-        {skill.heal   > 0 && <span className="skill-heal">💚 +{skill.heal}</span>}
+      {/* Meta: damage + cost */}
+      <div className="na-sk-meta">
+        {skill.damage > 0 && <span className="na-sk-dmg">⚔{skill.damage}</span>}
+        {skill.heal   > 0 && <span className="na-sk-heal">+{skill.heal}</span>}
         {(skill.isBasic || skill.isSubstitution) && skill.staminaCost > 0 && (
-          <span style={{ fontSize: '0.62rem', color: staminaOk ? '#22aaff' : '#cc4422', fontWeight: 700 }}>
-            💧 {skill.staminaCost} EST
-          </span>
+          <span className="na-sk-st">💧{skill.staminaCost}</span>
         )}
         <CostPips cost={skill.cost} />
-        {!affordable && !onCooldown && !substUsed && (
-          <span style={{ fontSize: '0.62rem', color: '#cc4422' }}>Chakra insuf.</span>
-        )}
-        {!staminaOk && !onCooldown && !substUsed && affordable && (
-          <span style={{ fontSize: '0.62rem', color: '#cc4422' }}>Estamina insuf.</span>
-        )}
       </div>
+
+      {!affordable && !onCooldown && !substUsed && (
+        <div className="na-sk-warn">Chakra ✗</div>
+      )}
+      {!staminaOk && !onCooldown && !substUsed && affordable && (
+        <div className="na-sk-warn">ST ✗</div>
+      )}
     </button>
   )
 }
@@ -257,15 +258,14 @@ function BattleResult({ battle, onClaim }) {
           </div>
           {win && (
             <div className="result-stat">
-              <span className="result-stat-val" style={{ color: '#ffcc00' }}>
-                +{100 + Math.floor(Math.random() * 100)}
+              <span className="result-stat-val" style={{ color:'#ffcc00' }}>
+                +{100 + Math.floor(Math.random()*100)}
               </span>
               <span className="result-stat-lbl">Ryō</span>
             </div>
           )}
         </div>
-        <button className={`btn btn-lg ${win ? 'btn-success' : 'btn-danger'}`}
-          onClick={onClaim}>
+        <button className={`btn btn-lg ${win ? 'btn-success' : 'btn-danger'}`} onClick={onClaim}>
           {win ? '🏅 Reivindicar Recompensas' : '↩ Voltar ao Menu'}
         </button>
       </div>
@@ -274,66 +274,59 @@ function BattleResult({ battle, onClaim }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-//  BattleScreen — main component
+//  BattleScreen — main
 // ─────────────────────────────────────────────────────────────
 export default function BattleScreen() {
   const { battle, dispatch } = useGame()
-  const logRef      = useRef(null)
-  const prevHPRef   = useRef(null)
+  const logRef       = useRef(null)
+  const prevHPRef    = useRef(null)
   const animTimerRef = useRef(null)
-  const [hitAnims, setHitAnims] = useState({ player: {}, enemy: {} })
+  const [hitAnims, setHitAnims] = useState({ player:{}, enemy:{} })
 
-  // Auto-scroll battle log
+  // Auto-scroll log
   useEffect(() => {
-    if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight
-    }
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [battle?.log])
 
-  // Detecta mudanças de HP e dispara animações de hit/heal
+  // HP change → trigger hit/heal anim
   useEffect(() => {
     if (!battle) { prevHPRef.current = null; return }
-
     if (prevHPRef.current) {
-      const newAnims = { player: {}, enemy: {} }
+      const newAnims = { player:{}, enemy:{} }
       battle.playerTeam.forEach((f, i) => {
-        const prevHp = prevHPRef.current.playerTeam[i]?.hp
-        if (prevHp === undefined) return
-        if (f.currentHp < prevHp) newAnims.player[i] = 'hit-anim'
-        else if (f.currentHp > prevHp) newAnims.player[i] = 'heal-anim'
+        const prev = prevHPRef.current.playerTeam[i]?.hp
+        if (prev === undefined) return
+        if (f.currentHp < prev) newAnims.player[i] = 'hit-anim'
+        else if (f.currentHp > prev) newAnims.player[i] = 'heal-anim'
       })
       battle.enemyTeam.forEach((f, i) => {
-        const prevHp = prevHPRef.current.enemyTeam[i]?.hp
-        if (prevHp === undefined) return
-        if (f.currentHp < prevHp) newAnims.enemy[i] = 'hit-anim'
-        else if (f.currentHp > prevHp) newAnims.enemy[i] = 'heal-anim'
+        const prev = prevHPRef.current.enemyTeam[i]?.hp
+        if (prev === undefined) return
+        if (f.currentHp < prev) newAnims.enemy[i] = 'hit-anim'
+        else if (f.currentHp > prev) newAnims.enemy[i] = 'heal-anim'
       })
-      const hasAnim = Object.keys(newAnims.player).length > 0 || Object.keys(newAnims.enemy).length > 0
-      if (hasAnim) {
+      const has = Object.keys(newAnims.player).length || Object.keys(newAnims.enemy).length
+      if (has) {
         clearTimeout(animTimerRef.current)
         setHitAnims(newAnims)
-        animTimerRef.current = setTimeout(() => setHitAnims({ player: {}, enemy: {} }), 500)
+        animTimerRef.current = setTimeout(() => setHitAnims({ player:{}, enemy:{} }), 520)
       }
     }
-
     prevHPRef.current = {
       playerTeam: battle.playerTeam.map(f => ({ hp: f.currentHp })),
       enemyTeam:  battle.enemyTeam.map(f => ({ hp: f.currentHp })),
     }
   }, [battle])
 
-  // Auto-encerrar turno quando todos os personagens vivos já agiram
+  // Auto end-turn when all alive chars acted
   useEffect(() => {
     if (!battle || battle.phase !== 'player' || battle.winner) return
-    const aliveIndices = battle.playerTeam
-      .map((f, i) => f.currentHp > 0 ? i : -1)
-      .filter(i => i >= 0)
-    if (aliveIndices.length === 0) return
-    const allActed = aliveIndices.every(i => (battle.actedThisTurn || []).includes(i))
-    if (!allActed) return
-    // Pequeno delay para o jogador ver a última ação antes do turno encerrar
-    const timer = setTimeout(() => dispatch({ type: 'END_TURN' }), 700)
-    return () => clearTimeout(timer)
+    const alive = battle.playerTeam.map((f,i) => f.currentHp>0 ? i : -1).filter(i=>i>=0)
+    if (!alive.length) return
+    if (alive.every(i => (battle.actedThisTurn||[]).includes(i))) {
+      const t = setTimeout(() => dispatch({ type:'END_TURN' }), 700)
+      return () => clearTimeout(t)
+    }
   }, [battle?.actedThisTurn, battle?.phase, battle?.winner])
 
   if (!battle) return null
@@ -344,228 +337,186 @@ export default function BattleScreen() {
     actedThisTurn = [],
   } = battle
 
-  const selectedFighter   = selectedCharIdx !== null ? playerTeam[selectedCharIdx] : null
-  const isPlayerTurn      = phase === 'player'
-  const isEnd             = phase === 'end'
-  const selectedHasActed  = selectedCharIdx !== null && actedThisTurn.includes(selectedCharIdx)
-  const allActed          = playerTeam.filter(f => f.currentHp > 0).every((_, idx) => {
-    const realIdx = playerTeam.indexOf(playerTeam.filter(f => f.currentHp > 0)[idx])
-    return actedThisTurn.includes(realIdx)
-  })
+  const selectedFighter  = selectedCharIdx !== null ? playerTeam[selectedCharIdx] : null
+  const isPlayerTurn     = phase === 'player'
+  const isEnd            = phase === 'end'
+  const selectedHasActed = selectedCharIdx !== null && actedThisTurn.includes(selectedCharIdx)
 
   // ── Handlers ──────────────────────────────────────────────
-
   function handlePlayerClick(idx) {
     if (!isPlayerTurn || isEnd) return
-    if (targetMode && targetType === 'ally') {
-      dispatch({ type: 'SELECT_TARGET', side: 'ally', idx })
-      return
-    }
-    dispatch({ type: 'SELECT_CHAR', idx })
+    if (targetMode && targetType === 'ally') { dispatch({ type:'SELECT_TARGET', side:'ally', idx }); return }
+    dispatch({ type:'SELECT_CHAR', idx })
   }
-
   function handleEnemyClick(idx) {
-    if (!isPlayerTurn || isEnd) return
-    if (!targetMode || targetType !== 'enemy') return
-    dispatch({ type: 'SELECT_TARGET', side: 'enemy', idx })
+    if (!isPlayerTurn || isEnd || !targetMode || targetType !== 'enemy') return
+    dispatch({ type:'SELECT_TARGET', side:'enemy', idx })
   }
-
   function handleSkill(skill) {
     if (!isPlayerTurn || selectedCharIdx === null) return
-    dispatch({ type: 'SELECT_SKILL', skill })
+    dispatch({ type:'SELECT_SKILL', skill })
   }
+  function handleEndTurn() { if (!isPlayerTurn || isEnd) return; dispatch({ type:'END_TURN' }) }
+  function handleForfeit()  { dispatch({ type:'FORFEIT' }) }
+  function handleCancelTarget() { dispatch({ type:'CANCEL_TARGET' }) }
+  function handleClaim()    { dispatch({ type:'CLAIM_BATTLE_RESULT' }) }
 
-  function handleEndTurn() {
-    if (!isPlayerTurn || isEnd) return
-    dispatch({ type: 'END_TURN' })
-  }
-
-  function handleForfeit() {
-    dispatch({ type: 'FORFEIT' })
-  }
-
-  function handleCancelTarget() {
-    dispatch({ type: 'CANCEL_TARGET' })
-  }
-
-  function handleClaim() {
-    dispatch({ type: 'CLAIM_BATTLE_RESULT' })
-  }
-
-  // Skills for selected fighter
   const skills = selectedFighter
     ? [...(selectedFighter.skills || []), BASIC_KUNAI, SUBSTITUTION]
     : []
 
+  const aliveActed = actedThisTurn.filter(i => playerTeam[i]?.currentHp > 0).length
+  const aliveTotal = playerTeam.filter(f => f.currentHp > 0).length
+
   return (
     <div className="battle-screen">
-      {/* ── Header ── */}
-      <div className="battle-header">
-        <div className="battle-turn-info">
-          <span className="battle-turn">Turno {turn}</span>
-          <span className={`battle-phase-badge ${phase === 'player' ? 'phase-player' : 'phase-ai'}`}>
-            {phase === 'player' ? '⚔ Sua vez' : phase === 'ai' ? '🤖 IA' : '🏁 Fim'}
+      <BattleArena3D phase={phase} />
+
+      {/* ── Top header ── */}
+      <div className="na-header bs-layer">
+        <div className="na-header-left">
+          <span className="na-turn-num">TURNO {turn}</span>
+          <span className={`na-phase-badge ${phase==='player' ? 'nph-player' : 'nph-ai'}`}>
+            {phase==='player' ? '⚔ SUA VEZ' : phase==='ai' ? '🤖 IA' : '🏁 FIM'}
           </span>
         </div>
-        <div className="battle-enemy-info">
-          🎴 vs <strong>{enemyTeamName}</strong>
+        <div className="na-header-center">
+          🎴 <strong>{enemyTeamName}</strong>
         </div>
-        {!isEnd && (
-          <button className="btn btn-danger btn-sm" onClick={handleForfeit}>
-            🏳 Render-se
-          </button>
-        )}
+        <div className="na-header-right">
+          {!isEnd && (
+            <button className="btn btn-danger btn-sm" onClick={handleForfeit}>
+              🏳 Render-se
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ── Enemy Team ── */}
-      <div className="team-row enemy-row">
-        <span className="team-label">Inimigo</span>
-        <div className="fighters">
+      {/* ── Main 3-column arena ── */}
+      <div className="na-arena bs-layer">
+
+        {/* LEFT — Enemy team */}
+        <div className="na-team-col na-enemy-col">
+          <div className="na-col-label enemy-label">▼ INIMIGO</div>
           {enemyTeam.map((fighter, idx) => (
-            <FighterCard
+            <FighterRow
               key={idx}
               fighter={fighter}
               isDead={fighter.currentHp <= 0}
-              isTarget={!!(isPlayerTurn && targetMode && targetType === 'enemy' && fighter.currentHp > 0)}
-              isIdle={!isPlayerTurn || !targetMode}
+              isTarget={!!(isPlayerTurn && targetMode && targetType==='enemy' && fighter.currentHp > 0)}
               animClass={hitAnims.enemy[idx]}
               onClick={() => handleEnemyClick(idx)}
             />
           ))}
         </div>
-      </div>
 
-      {/* ── Chakra + quick controls ── */}
-      <div className="battle-middle">
-        <ChakraDisplay chakra={chakra} />
-        {!isEnd && (
-          <button
-            className="btn btn-primary"
-            onClick={handleEndTurn}
-            disabled={!isPlayerTurn}>
-            ⏭ Encerrar Turno
-          </button>
-        )}
-      </div>
+        {/* CENTER — Chakra + Skills + Log */}
+        <div className="na-center-col">
 
-      {/* ── Player Team ── */}
-      <div className="team-row player-row">
-        <span className="team-label">Aliado</span>
-        <div className="fighters">
-          {playerTeam.map((fighter, idx) => (
-            <FighterCard
-              key={idx}
-              fighter={fighter}
-              isDead={fighter.currentHp <= 0}
-              isActive={selectedCharIdx === idx}
-              isAllyTarget={!!(isPlayerTurn && targetMode && targetType === 'ally' && fighter.currentHp > 0)}
-              isIdle={!isPlayerTurn || targetMode}
-              hasActed={!!(fighter.currentHp > 0 && actedThisTurn.includes(idx))}
-              isStunned={!!(fighter.currentHp > 0 && fighter.statuses?.some(s => s.type === 'stun'))}
-              showStamina={true}
-              animClass={hitAnims.player[idx]}
-              onClick={() => handlePlayerClick(idx)}
-            />
-          ))}
-        </div>
-      </div>
+          {/* Chakra bar */}
+          <ChakraDisplay chakra={chakra} />
 
-      {/* ── Body: Log + Skill Panel ── */}
-      <div className="battle-body">
-        {/* Left: Log */}
-        <div className="battle-left">
-          {/* Target mode hint */}
+          {/* Target mode banner */}
           {targetMode && (
-            <div className="target-hint">
-              {targetType === 'enemy'
-                ? '🎯 Clique em um INIMIGO para atacar'
-                : '🤝 Clique em um ALIADO como alvo'}
-              <button
-                className="btn btn-ghost btn-sm"
-                style={{ marginLeft: '10px', padding: '3px 8px' }}
-                onClick={handleCancelTarget}>
-                ✕ Cancelar
-              </button>
+            <div className="na-target-banner">
+              <span>
+                {targetType==='enemy' ? '🎯 Clique no INIMIGO para atacar' : '🤝 Clique no ALIADO como alvo'}
+              </span>
+              <button className="btn btn-ghost btn-sm" onClick={handleCancelTarget}>✕</button>
             </div>
           )}
 
-          {/* Battle log */}
-          <div className="battle-log" ref={logRef}>
-            {(log || []).map((line, i) => (
-              <div key={i} className="log-line">{line}</div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right: Skill panel */}
-        <div className="battle-right">
-          <div className="skill-panel">
+          {/* Skill panel */}
+          <div className="na-skill-panel">
             {selectedFighter ? (
               <>
-                <div className="skill-panel-title">
-                  {selectedFighter.emoji} {selectedFighter.name.split(' ')[0]}
-                  {selectedHasActed && (
-                    <span style={{ color: '#44aa44', marginLeft: 6, fontSize: '0.7rem' }}>
-                      ✓ JÁ AGIU
-                    </span>
-                  )}
-                  {!selectedHasActed && selectedFighter.statuses.some(s => s.type === 'stun') && (
-                    <span style={{ color: '#ff4444', marginLeft: 6, fontSize: '0.7rem' }}>
-                      💫 ATORDOADO
-                    </span>
+                <div className="na-sk-header">
+                  <CharAvatar char={selectedFighter} size="sm" shape="circle" isDead={selectedHasActed} />
+                  <div className="na-sk-char-name">{selectedFighter.name.split(' ')[0]}</div>
+                  {selectedHasActed && <span className="na-sk-acted-tag">✓ Agiu</span>}
+                  {!selectedHasActed && selectedFighter.statuses.some(s=>s.type==='stun') && (
+                    <span className="na-sk-stun-tag">💫 Atordoado</span>
                   )}
                 </div>
 
                 {selectedHasActed ? (
-                  <div style={{ fontSize: '0.78rem', color: '#44aa44', textAlign: 'center', padding: '16px 8px', background: 'rgba(0,80,0,0.15)', borderRadius: '6px', margin: '4px' }}>
-                    ✓ <strong>{selectedFighter.name.split(' ')[0]}</strong> já usou sua habilidade neste turno.<br/>
-                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>Encerre o turno ou escolha outro personagem.</span>
+                  <div className="na-sk-acted-msg">
+                    ✓ {selectedFighter.name.split(' ')[0]} já agiu neste turno.
+                    <span> Encerre o turno ou escolha outro personagem.</span>
                   </div>
-                ) : selectedFighter.statuses.some(s => s.type === 'stun') ? (
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '16px 8px' }}>
-                    💫 Personagem atordoado — não pode agir neste turno.
-                  </div>
+                ) : selectedFighter.statuses.some(s=>s.type==='stun') ? (
+                  <div className="na-sk-acted-msg">💫 Atordoado — não pode agir.</div>
                 ) : (
-                  skills.map((sk, i) => (
-                    <SkillButton
-                      key={sk.id || i}
-                      skill={sk}
-                      fighter={selectedFighter}
-                      chakra={chakra}
-                      onClick={handleSkill}
-                    />
-                  ))
+                  <div className="na-skill-grid">
+                    {skills.map((sk, i) => (
+                      <SkillButton key={sk.id||i} skill={sk} fighter={selectedFighter} chakra={chakra} onClick={handleSkill} />
+                    ))}
+                  </div>
                 )}
               </>
             ) : (
-              <div className="skill-panel-hint">
+              <div className="na-sk-hint">
                 {isPlayerTurn
-                  ? `👆 Selecione um personagem para agir (${actedThisTurn.filter(i => playerTeam[i]?.currentHp > 0).length}/${playerTeam.filter(f => f.currentHp > 0).length} agiram)`
-                  : phase === 'ai'
-                  ? '🤖 A IA está agindo...'
+                  ? `👆 Selecione um personagem (${aliveActed}/${aliveTotal} agiram)`
+                  : phase==='ai'
+                  ? '🤖 A IA está executando sua jogada...'
                   : '⚔ Batalha encerrada'}
               </div>
             )}
           </div>
 
-          {/* Controls */}
+          {/* Battle log */}
+          <div className="na-battle-log" ref={logRef}>
+            {(log||[]).map((line, i) => (
+              <div key={i} className={`log-line ${logClass(line)}`}>{line}</div>
+            ))}
+          </div>
+
+          {/* Bottom controls */}
           {!isEnd && (
-            <div className="battle-controls">
-              {targetMode ? (
-                <button className="btn btn-ghost" onClick={handleCancelTarget}>
-                  ✕ Cancelar Seleção
-                </button>
-              ) : (
-                <button className="btn btn-ghost" onClick={handleCancelTarget}>
+            <div className="na-bottom-bar">
+              {!targetMode ? (
+                <button className="btn btn-ghost btn-sm" onClick={handleCancelTarget}>
                   ↩ Desselecionar
                 </button>
+              ) : (
+                <button className="btn btn-ghost btn-sm" onClick={handleCancelTarget}>
+                  ✕ Cancelar
+                </button>
               )}
+              <button
+                className="btn btn-primary na-end-turn-btn"
+                onClick={handleEndTurn}
+                disabled={!isPlayerTurn}
+              >
+                ⏭ ENCERRAR TURNO
+              </button>
             </div>
           )}
         </div>
+
+        {/* RIGHT — Player team */}
+        <div className="na-team-col na-player-col">
+          <div className="na-col-label player-label">▼ ALIADO</div>
+          {playerTeam.map((fighter, idx) => (
+            <FighterRow
+              key={idx}
+              fighter={fighter}
+              isDead={fighter.currentHp <= 0}
+              isActive={selectedCharIdx === idx}
+              isAllyTarget={!!(isPlayerTurn && targetMode && targetType==='ally' && fighter.currentHp > 0)}
+              hasActed={!!(fighter.currentHp > 0 && actedThisTurn.includes(idx))}
+              isStunned={!!(fighter.currentHp > 0 && fighter.statuses?.some(s=>s.type==='stun'))}
+              showStamina
+              animClass={hitAnims.player[idx]}
+              onClick={() => handlePlayerClick(idx)}
+            />
+          ))}
+        </div>
+
       </div>
 
-      {/* ── Battle Result Overlay ── */}
+      {/* ── Result overlay ── */}
       {isEnd && <BattleResult battle={battle} onClaim={handleClaim} />}
     </div>
   )

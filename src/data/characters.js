@@ -1129,7 +1129,7 @@ const CHARACTERS = [
         'Extrai a alma do inimigo. Causa 115 de dano instantâneo.',
         c(3,0,0,0,0), 115,0,'enemy','stun1',0,'💀'),
       sk('ng4','Rinne Tensei',
-        'Ressuscita TODOS os aliados mortos com 35 HP. 1x por batalha. Após o uso, Nagato morre.',
+        'Ressuscita TODOS os aliados mortos com 35 HP. 1x por batalha. Se Nagato estiver acima de 50% HP, sobrevive com 1 HP (Exausto). Abaixo de 50% HP, ele morre.',
         c(0,0,0,4,0), 0,0,'all_ally','team_revive',99,'♾️'),
     ],
   },
